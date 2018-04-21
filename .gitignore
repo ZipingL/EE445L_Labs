@@ -1,0 +1,72 @@
+*/
+!Lab*/
+*.docx
+*.doc
+lm4f120.s
+tm4c123gh6pm.s
+*.pdf
+*.iex
+
+# PCB Artist files
+~*.sch
+~*.pcb
+
+# uVision Generated Files
+*.uvopt
+*.uvgui.*
+*.axf
+*.htm
+*.Inp
+*.map
+*.tra
+*.dep
+*.__i
+*.crf
+*.d
+*.o
+*.lst
+*.lnp
+*.bak
+0x*
+FLASH
+SRAM
+
+# Object files
+*.o
+*.ko
+*.obj
+*.elf
+
+# OSX files
+.DS_Store
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Libraries
+*.lib
+*.a
+*.la
+*.lo
+
+# Shared objects (inc. Windows DLLs)
+*.dll
+*.so
+*.so.*
+*.dylib
+
+# Executables
+*.exe
+*.out
+*.app
+*.i*86
+*.x86_64
+*.hex
+
+# Debug files
+*.dSYM/
+*.doc
+*.log
+*.ini
+Lab5/~lab5.sch
