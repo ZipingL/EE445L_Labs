@@ -29,6 +29,8 @@
 #include "ADCSWTrigger.h"
 #include "../inc/tm4c123gh6pm.h"
 #include "PLL.h"
+#include "Timer1.h"
+#include "stdbool.h"
 
 #define PF2             (*((volatile uint32_t *)0x40025010))
 #define PF1             (*((volatile uint32_t *)0x40025008))
@@ -39,6 +41,58 @@ void EndCritical(long sr);    // restore I bit to previous value
 void WaitForInterrupt(void);  // low power mode
 
 volatile uint32_t ADCvalue;
+
+// global arrays
+volatile uint32_t Timer0Values[1000] = {0};
+volatile uint32_t ADCvalues[1000] = {0};
+volatile uint32_t timeDifferences[999] = {0};
+volatile uint32_t ADCPMF[4096] = {0};
+
+//global values
+ volatile uint32_t timeDiff;
+ volatile uint32_t timeMax;
+ volatile uint32_t timeMin; 
+
+
+uint32_t Process_Times() {
+  timeDiff = 0;
+
+timeMax = timeDifferences[0];
+timeMin = timeDifferences[0];
+  for(uint32_t i = 0; i < 999; i++)
+  {
+    timeDifferences[i] = Timer0Values[i] - Timer0Values[i+1];
+  }
+  
+  for(uint32_t i = 1; i < 999; i++)
+  {
+    if(timeDifferences[i] > timeMax)
+      timeMax = timeDifferences[i];
+    if(timeDifferences[i] < timeMin)
+      timeMin = timeDifferences[i];
+  }
+  
+  timeDiff = timeMax - timeMin;
+  return timeDiff;
+}
+void Process_ADCValues() {
+  for(int32_t i = 0; i < 1000; i++)
+	{
+		ADCPMF[ ADCvalues[i] ] += 1;
+	}
+}
+
+void Process_Data() {
+  volatile static bool data_processed = false;
+  
+  if(!data_processed){
+    Process_Times();
+    Process_ADCValues();
+    data_processed = true;
+  }
+}
+
+
 // This debug function initializes Timer0A to request interrupts
 // at a 100 Hz frequency.  It is similar to FreqMeasure.c.
 void Timer0A_Init100HzInt(void){
@@ -62,17 +116,32 @@ void Timer0A_Init100HzInt(void){
   NVIC_EN0_R = 1<<19;              // enable interrupt 19 in NVIC
 }
 void Timer0A_Handler(void){
+
+  static volatile uint32_t time_stamp_counter = 0;
   TIMER0_ICR_R = TIMER_ICR_TATOCINT;    // acknowledge timer0A timeout
   PF2 ^= 0x04;                   // profile
   PF2 ^= 0x04;                   // profile
   ADCvalue = ADC0_InSeq3();
+  // get the time and record it
+  
+  if(time_stamp_counter < 1000) {
+
+  Timer0Values[time_stamp_counter] = TIMER1_TAR_R;
+  ADCvalues[time_stamp_counter++] = ADCvalue;
+  }
+  else {
+    Process_Data();
+  }
   PF2 ^= 0x04;                   // profile
 }
 int main(void){
+	DisableInterrupts();
   PLL_Init(Bus80MHz);                   // 80 MHz
   SYSCTL_RCGCGPIO_R |= 0x20;            // activate port F
   ADC0_InitSWTriggerSeq3_Ch9();         // allow time to finish activating
+    Timer1_Init();
   Timer0A_Init100HzInt();               // set up Timer0A for 100 Hz interrupts
+
   GPIO_PORTF_DIR_R |= 0x06;             // make PF2, PF1 out (built-in LED)
   GPIO_PORTF_AFSEL_R &= ~0x06;          // disable alt funct on PF2, PF1
   GPIO_PORTF_DEN_R |= 0x06;             // enable digital I/O on PF2, PF1
@@ -82,6 +151,7 @@ int main(void){
   PF2 = 0;                      // turn off LED
   EnableInterrupts();
   while(1){
+    
     PF1 ^= 0x02;  // toggles when running in main
   }
 }
