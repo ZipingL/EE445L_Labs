@@ -249,9 +249,9 @@ GPIO_PORTF_PUR_R |= 0x10;         // 5) pullup for PF4
 
 void partE() {
 			Output_Clear();
-	int tens = hardware_index / 10;
-	int ones = hardware_index %10;
-	ST7735_DrawChar(tens == 0? 0:9,  0, 49+ones, ST7735_WHITE, ST7735_BLACK,2);
+	int tens = hardWareAverageVals[hardware_index] / 10;
+	int ones = hardWareAverageVals[hardware_index] %10;
+	ST7735_DrawChar(tens == 0? 0:9,  0, 48+ones, ST7735_WHITE, ST7735_BLACK,2);
 	if(tens != 0)
 ST7735_DrawChar(0,  0, 48+tens, ST7735_WHITE, ST7735_BLACK,2);
 
