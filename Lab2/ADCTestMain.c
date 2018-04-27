@@ -56,6 +56,7 @@ volatile uint32_t timeDifferences[999] = {0};
 volatile uint32_t ADCPMF[4096] = {0};
 uint32_t hardWareAverageVals[4] = {1, 4, 16, 64};
 //global values
+volatile uint16_t loadbar_x = 0;
 volatile uint32_t ADCvalue;
 volatile uint32_t timeDiff;
 volatile uint32_t timeMax;
@@ -191,9 +192,15 @@ void Timer0A_Handler(void){
 	  // get the time and record it
   
   if(time_stamp_counter < 1000) {
-
-  Timer0Values[time_stamp_counter] = TIMER1_TAR_R;
-  ADCvalues[time_stamp_counter++] = ADCvalue;
+		
+		// fill a part of loading bar
+		if(time_stamp_counter % 10 == 0)
+		{
+			ST7735_FillRect(loadbar_x, 11, 1, 8, ST7735_GREEN);
+			loadbar_x += 1;
+		}
+		Timer0Values[time_stamp_counter] = TIMER1_TAR_R;
+		ADCvalues[time_stamp_counter++] = ADCvalue;
   }
 
 }
@@ -203,10 +210,7 @@ int main(void){
 	DisableInterrupts();
   PLL_Init(Bus80MHz);                   // 80 MHz
 	Output_Init();
-	ST7735_DrawChar(40, 0, 'L', ST7735_WHITE, ST7735_BLACK,2);
-	ST7735_DrawChar(52,  0, 'a', ST7735_WHITE, ST7735_BLACK,2);
-	ST7735_DrawChar(64,  0, 'b', ST7735_WHITE, ST7735_BLACK,2);
-	ST7735_DrawChar(76,  0, '2', ST7735_WHITE, ST7735_BLACK,2);
+
   SYSCTL_RCGCGPIO_R |= 0x20;            // activate port F
   ADC0_InitSWTriggerSeq3_Ch9();         // allow time to finish activating
     Timer1_Init();
@@ -227,6 +231,20 @@ int main(void){
 		ADCPMF[i] = 0;
 	}
 	data_processed = false;
+	
+	// Setup loading bar
+	loadbar_x = 14;
+		ST7735_DrawChar(104, 0, 'L', ST7735_YELLOW, ST7735_BLACK,1);
+	ST7735_DrawChar(110,  0, 'a', ST7735_YELLOW, ST7735_BLACK,1);
+	ST7735_DrawChar(116,  0, 'b', ST7735_YELLOW, ST7735_BLACK,1);
+	ST7735_DrawChar(122,  0, '2', ST7735_YELLOW, ST7735_BLACK,1);
+	ST7735_FillRect(14, 10, 100, 10, ST7735_MAGENTA);
+	ST7735_FillRect(12, 11, 2, 8, ST7735_MAGENTA);
+	ST7735_FillRect(10, 12, 2, 6, ST7735_MAGENTA);
+	ST7735_FillRect(114, 11, 2, 8, ST7735_MAGENTA);
+	ST7735_FillRect(116, 12, 2, 6, ST7735_MAGENTA);
+	ST7735_FillRect(12, 12, 2, 6, ST7735_GREEN);
+	ST7735_FillRect(11, 13, 1, 4, ST7735_GREEN);
 	// increment the index to allow for new hw average value
 	hardware_index = hardware_index + 1;
 	hardware_index = hardware_index == 4 ? 0 : hardware_index;
@@ -253,16 +271,23 @@ int main(void){
 void partE() {
     
   uint32_t maxADCval = Find_Extreme(ADCPMF, 4096, true);
-	ST7735_FillRect(0, 20, 128, 140, ST7735_WHITE);
+	ST7735_FillRect(0, 20, 128, 140, ST7735_YELLOW);
 
 	// Display on LCD which hardware average adc values based on (e.g. x64)
 	int tens = hardWareAverageVals[hardware_index] / 10;
 	int ones = hardWareAverageVals[hardware_index] %10;
-	ST7735_FillRect(0, 0,29,20, ST7735_BLACK);
-	ST7735_DrawChar(0,  0, 'x', ST7735_YELLOW, ST7735_BLACK,2);
-	ST7735_DrawChar(tens == 0? 10:22,  0, 48+ones, ST7735_WHITE, ST7735_BLACK,2);
+	ST7735_DrawChar(1,  0, 'H', ST7735_YELLOW, ST7735_BLACK,1);
+	ST7735_DrawChar(7,  0, 'W', ST7735_YELLOW, ST7735_BLACK,1);
+	ST7735_DrawChar(13,  0, ' ', ST7735_YELLOW, ST7735_BLACK,1);
+	ST7735_DrawChar(19,  0, 'A', ST7735_YELLOW, ST7735_BLACK,1);
+	ST7735_DrawChar(25,  0, 'V', ST7735_YELLOW, ST7735_BLACK,1);
+	ST7735_DrawChar(31,  0, 'G', ST7735_YELLOW, ST7735_BLACK,1);
+  ST7735_DrawChar(37,  0, ':', ST7735_YELLOW, ST7735_BLACK,1);
+	ST7735_FillRect(49, 0, 24, 10, ST7735_BLACK);
+	ST7735_DrawChar(49,  0, 'x', ST7735_YELLOW, ST7735_BLACK,1);
+	ST7735_DrawChar(tens == 0? 55:61,  0, 48+ones, ST7735_YELLOW, ST7735_BLACK,1);
 	if(tens != 0)
-    ST7735_DrawChar(10,  0, 48+tens, ST7735_WHITE, ST7735_BLACK,2);
+    ST7735_DrawChar(55,  0, 48+tens, ST7735_WHITE, ST7735_BLACK,1);
 
   // display on LCD the PMF graph lines
 	uint32_t x_value = 20;
@@ -295,10 +320,10 @@ void partE() {
 			y+= round_y;
 			// Graph the line, and make it 4 pixels thick
 			// swap between two colors for each line for better read clarity
-			ST7735_DrawFastVLineFlip(x_value++, 0, y, i%2 == 0? ST7735_MAGENTA: ST7735_GREEN);
-			ST7735_DrawFastVLineFlip(x_value++, 0, y, i%2 == 0? ST7735_MAGENTA: ST7735_GREEN);
-			ST7735_DrawFastVLineFlip(x_value++, 0, y, i%2 == 0? ST7735_MAGENTA: ST7735_GREEN);
-			ST7735_DrawFastVLineFlip(x_value++, 0, y, i%2 == 0? ST7735_MAGENTA: ST7735_GREEN);
+			ST7735_DrawFastVLineFlip(x_value++, 0, y, i%2 == 0? ST7735_MAGENTA: ST7735_RED);
+			ST7735_DrawFastVLineFlip(x_value++, 0, y, i%2 == 0? ST7735_MAGENTA: ST7735_RED);
+			ST7735_DrawFastVLineFlip(x_value++, 0, y, i%2 == 0? ST7735_MAGENTA: ST7735_RED);
+			ST7735_DrawFastVLineFlip(x_value++, 0, y, i%2 == 0? ST7735_MAGENTA: ST7735_RED);
 
 		}
 	} // end for (int i = 0; i < 4096...)
@@ -313,12 +338,12 @@ void partE() {
 	int hundreds = (ind2 / 100) % 10;
 	tens = (ind2 / 10 ) % 10;
 	ones = ind2 % 10;
-	ST7735_DrawChar(ind + 1,  22, 'X', ST7735_BLACK, ST7735_WHITE,1);
-	ST7735_DrawChar(ind + 7,  22,'=', ST7735_BLACK, ST7735_WHITE,1);
-	ST7735_DrawChar(ind + 13,  22, thousands+48, ST7735_BLACK, ST7735_WHITE,1);
-	ST7735_DrawChar(ind + 19,  22, hundreds+48, ST7735_BLACK, ST7735_WHITE,1);
-	ST7735_DrawChar(ind + 25,  22, tens+48, ST7735_BLACK, ST7735_WHITE,1);
-	ST7735_DrawChar(ind + 31,  22, ones+48, ST7735_BLACK, ST7735_WHITE,1);
+	ST7735_DrawChar(ind + 1,  22, 'X', ST7735_BLACK, ST7735_YELLOW,1);
+	ST7735_DrawChar(ind + 7,  22,'=', ST7735_BLACK, ST7735_YELLOW,1);
+	ST7735_DrawChar(ind + 13,  22, thousands+48, ST7735_BLACK, ST7735_YELLOW,1);
+	ST7735_DrawChar(ind + 19,  22, hundreds+48, ST7735_BLACK, ST7735_YELLOW,1);
+	ST7735_DrawChar(ind + 25,  22, tens+48, ST7735_BLACK, ST7735_YELLOW,1);
+	ST7735_DrawChar(ind + 31,  22, ones+48, ST7735_BLACK, ST7735_YELLOW,1);
 	
 	// Display on LCD a horizontal dotted line that is along 1/2 the value 
 	//  of the most number of occurances
@@ -330,11 +355,11 @@ void partE() {
   hundreds = maxADCval_half / 100;
 	tens = (maxADCval_half / 10 ) % 10;
 	ones = maxADCval_half % 10;
-	ST7735_DrawChar(1,  92, 'Y', ST7735_BLACK, ST7735_WHITE,1);
-	ST7735_DrawChar(7,  92,'=', ST7735_BLACK, ST7735_WHITE,1);
-	ST7735_DrawChar(13,  92,hundreds+48, ST7735_BLACK, ST7735_WHITE,1);
-	ST7735_DrawChar(19,  92, tens+48, ST7735_BLACK, ST7735_WHITE,1);
-	ST7735_DrawChar(25,  92, ones+48, ST7735_BLACK, ST7735_WHITE,1);
+	ST7735_DrawChar(1,  92, 'Y', ST7735_BLACK, ST7735_YELLOW,1);
+	ST7735_DrawChar(7,  92,'=', ST7735_BLACK, ST7735_YELLOW,1);
+	ST7735_DrawChar(13,  92,hundreds+48, ST7735_BLACK, ST7735_YELLOW,1);
+	ST7735_DrawChar(19,  92, tens+48, ST7735_BLACK, ST7735_YELLOW,1);
+	ST7735_DrawChar(25,  92, ones+48, ST7735_BLACK, ST7735_YELLOW,1);
 	
 	// Display on LCD a horizontal dotted line that is along the value of the
 	// most number of occurances
@@ -346,9 +371,13 @@ void partE() {
   hundreds = maxADCval / 100;
 	tens = (maxADCval / 10 ) % 10;
 	ones = maxADCval % 10;
-	ST7735_DrawChar(1,  34, 'Y', ST7735_BLACK, ST7735_WHITE,1);
-	ST7735_DrawChar(7,  34,'=', ST7735_BLACK, ST7735_WHITE,1);
-	ST7735_DrawChar(13,  34,hundreds+48, ST7735_BLACK, ST7735_WHITE,1);
-	ST7735_DrawChar(19,  34, tens+48, ST7735_BLACK, ST7735_WHITE,1);
-	ST7735_DrawChar(25,  34, ones+48, ST7735_BLACK, ST7735_WHITE,1);
+	ST7735_DrawChar(1,  34, 'Y', ST7735_BLACK, ST7735_YELLOW,1);
+	ST7735_DrawChar(7,  34,'=', ST7735_BLACK, ST7735_YELLOW,1);
+	ST7735_DrawChar(13,  34,hundreds+48, ST7735_BLACK, ST7735_YELLOW,1);
+	ST7735_DrawChar(19,  34, tens+48, ST7735_BLACK, ST7735_YELLOW,1);
+	ST7735_DrawChar(25,  34, ones+48, ST7735_BLACK, ST7735_YELLOW,1);
+	
+	// fill loading bar to full
+  ST7735_FillRect(114, 12, 2, 6, ST7735_GREEN);
+	ST7735_FillRect(116, 13, 1, 4, ST7735_GREEN);
 }
