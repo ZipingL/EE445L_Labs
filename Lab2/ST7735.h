@@ -149,7 +149,7 @@ void ST7735_DrawPixel(int16_t x, int16_t y, uint16_t color);
 //        color 16-bit color, which can be produced by ST7735_Color565()
 // Output: none
 void ST7735_DrawFastVLine(int16_t x, int16_t y, int16_t h, uint16_t color);
-
+void ST7735_DrawFastVLineFlip(int16_t x, int16_t y, int16_t h, uint16_t color);
 
 //------------ST7735_DrawFastHLine------------
 // Draw a horizontal line at the given coordinates with the given width and color.

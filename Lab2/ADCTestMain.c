@@ -36,7 +36,7 @@
 #include "stdbool.h"
 #include "ST7735.h"
 void DumpDebugData(bool text);
-void partE();
+void partE(void);
 
 #define PF2             (*((volatile uint32_t *)0x40025010))
 #define PF1             (*((volatile uint32_t *)0x40025008))
@@ -92,7 +92,8 @@ void Pause(void){
 uint32_t Find_Extreme(uint32_t* array, uint32_t size, bool max){
 	
 	uint32_t extreme = max==true?0:0xFFFFFFFF;
-	for(int i = 0; i < size; i++)
+	int i = 0;
+	for(i = 0; i < size; i++)
 	{
 		if(array[i] > extreme && max == true)
 		 extreme = array[i];
@@ -199,11 +200,14 @@ void Timer0A_Handler(void){
 }
 int main(void){
 	hardware_index = -1;
-
+	
 	DisableInterrupts();
   PLL_Init(Bus80MHz);                   // 80 MHz
 	Output_Init();
-
+	ST7735_DrawChar(40, 0, 'L', ST7735_WHITE, ST7735_BLACK,2);
+	ST7735_DrawChar(52,  0, 'a', ST7735_WHITE, ST7735_BLACK,2);
+	ST7735_DrawChar(64,  0, 'b', ST7735_WHITE, ST7735_BLACK,2);
+	ST7735_DrawChar(76,  0, '2', ST7735_WHITE, ST7735_BLACK,2);
   SYSCTL_RCGCGPIO_R |= 0x20;            // activate port F
   ADC0_InitSWTriggerSeq3_Ch9();         // allow time to finish activating
     Timer1_Init();
@@ -251,48 +255,89 @@ GPIO_PORTF_PUR_R |= 0x10;         // 5) pullup for PF4
 
 
 void partE() {
-			Output_Clear();
+  uint32_t maxADCval = Find_Extreme(ADCPMF, 4096, true);
+	ST7735_FillRect(0, 20, 128, 140, ST7735_WHITE);
+
 	int tens = hardWareAverageVals[hardware_index] / 10;
 	int ones = hardWareAverageVals[hardware_index] %10;
+		ST7735_FillRect(0, 0,29,20, ST7735_BLACK);
 	ST7735_DrawChar(0,  0, 'x', ST7735_YELLOW, ST7735_BLACK,2);
 	ST7735_DrawChar(tens == 0? 10:22,  0, 48+ones, ST7735_WHITE, ST7735_BLACK,2);
 	if(tens != 0)
 ST7735_DrawChar(10,  0, 48+tens, ST7735_WHITE, ST7735_BLACK,2);
 
-	uint32_t x_value = 15;
+	uint32_t x_value = 20;
+	int ind = 0;
+	int ind2 = 0;
 	for(int i = 0; i < 4096; i++)
 	{
 		
 		
-	if(ADCPMF[i] > 0)
-	{
-		long long  y = 0;
-		uint32_t round_y = 0;
-		// calculate proportional pixel coordinate from the given x y value
-		y = ((long long) ADCPMF[i]  + 0 );
-		
-		y *= 159*10;
-		
-		// round if needed
+		if(ADCPMF[i] > 0)
+		{
+			if(ADCPMF[i] == maxADCval)
+			{
+				ind = x_value;
+				ind2 = i;
+			}
+			long long  y = 0;
+			uint32_t round_y = 0;
+			// calculate proportional pixel coordinate from the given x y value
+			y = ((long long) ADCPMF[i]  + 0 );
+			
+			y *= 118*10;
+			
+			// round if needed
 
-		if( (y % 10) >= 5)
-			round_y = 1;
+			if( (y % 10) >= 5)
+				round_y = 1;
 
-		y /= 10;
+			y /= 10;
+			
+			y /= (0 + maxADCval);
+			
+			y+= round_y;
+			
 		
-		y /= (0 + Find_Extreme(ADCPMF, 4096, true));
-		
-		y+= round_y;
-		
+			
+			ST7735_DrawFastVLineFlip(x_value++, 0, y, i%2 == 0? ST7735_MAGENTA: ST7735_GREEN);
+			ST7735_DrawFastVLineFlip(x_value++, 0, y, i%2 == 0? ST7735_MAGENTA: ST7735_GREEN);
+			ST7735_DrawFastVLineFlip(x_value++, 0, y, i%2 == 0? ST7735_MAGENTA: ST7735_GREEN);
+			ST7735_DrawFastVLineFlip(x_value++, 0, y, i%2 == 0? ST7735_MAGENTA: ST7735_GREEN);
+
+		}
+	}
 	
-		
-		ST7735_DrawFastVLine(x_value++, 0, y, i%2 == 0? ST7735_MAGENTA: ST7735_CYAN);
-		ST7735_DrawFastVLine(x_value++, 0, y, i%2 == 0? ST7735_MAGENTA: ST7735_CYAN);
-		ST7735_DrawFastVLine(x_value++, 0, y, i%2 == 0? ST7735_MAGENTA: ST7735_CYAN);
-		ST7735_DrawFastVLine(x_value++, 0, y, i%2 == 0? ST7735_MAGENTA: ST7735_CYAN);
+	for(int i = 0; i < 159; i+=8)
+	{
+  ST7735_DrawFastVLine( ind-1, i, 6, ST7735_BLACK);
+	}
+	int thousands = ind2 / 1000;
+	int hundreds = (ind2 / 100) % 10;
+	tens = (ind2 / 10 ) % 10;
+	ones = ind2 % 10;
+	ST7735_DrawChar(ind + 0,  22, 'X', ST7735_BLACK, ST7735_WHITE,1);
+	ST7735_DrawChar(ind + 6,  22,'=', ST7735_BLACK, ST7735_WHITE,1);
+	ST7735_DrawChar(ind + 12,  22, thousands+48, ST7735_BLACK, ST7735_WHITE,1);
+	ST7735_DrawChar(ind + 18,  22, hundreds+48, ST7735_BLACK, ST7735_WHITE,1);
+	ST7735_DrawChar(ind + 24,  22, tens+48, ST7735_BLACK, ST7735_WHITE,1);
+	ST7735_DrawChar(ind + 30,  22, ones+48, ST7735_BLACK, ST7735_WHITE,1);
+	
+	for(int i = 0; i < 125; i+=8)
+	{
+	ST7735_DrawFastHLine(i, 100, 6, ST7735_BLACK);
+	}
+  int maxADCval_half = maxADCval / 2;
+   hundreds = maxADCval_half / 100;
+	tens = (maxADCval_half / 10 ) % 10;
+	ones = maxADCval_half % 10;
+	ST7735_DrawChar(1,  92, 'Y', ST7735_BLACK, ST7735_WHITE,1);
+	ST7735_DrawChar(7,  92,'=', ST7735_BLACK, ST7735_WHITE,1);
+	ST7735_DrawChar(13,  92,hundreds+48, ST7735_BLACK, ST7735_WHITE,1);
+	ST7735_DrawChar(19,  92, tens+48, ST7735_BLACK, ST7735_WHITE,1);
+	ST7735_DrawChar(25,  92, ones+48, ST7735_BLACK, ST7735_WHITE,1);
+	
 
-	}
-	}
 }
 
 
