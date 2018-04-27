@@ -305,7 +305,7 @@ void partE() {
 	
 	// Display on LCD a vertical dotted line along plotted along
 	// the graph line of the adc value with the most occurances
-	for(int i = 0; i < 159; i+=8)
+	for(int i = 20; i < 159; i+=8)
 	{
         ST7735_DrawFastVLine( ind-1, i, 6, ST7735_BLACK);
 	}
@@ -313,12 +313,12 @@ void partE() {
 	int hundreds = (ind2 / 100) % 10;
 	tens = (ind2 / 10 ) % 10;
 	ones = ind2 % 10;
-	ST7735_DrawChar(ind + 0,  22, 'X', ST7735_BLACK, ST7735_WHITE,1);
-	ST7735_DrawChar(ind + 6,  22,'=', ST7735_BLACK, ST7735_WHITE,1);
-	ST7735_DrawChar(ind + 12,  22, thousands+48, ST7735_BLACK, ST7735_WHITE,1);
-	ST7735_DrawChar(ind + 18,  22, hundreds+48, ST7735_BLACK, ST7735_WHITE,1);
-	ST7735_DrawChar(ind + 24,  22, tens+48, ST7735_BLACK, ST7735_WHITE,1);
-	ST7735_DrawChar(ind + 30,  22, ones+48, ST7735_BLACK, ST7735_WHITE,1);
+	ST7735_DrawChar(ind + 1,  22, 'X', ST7735_BLACK, ST7735_WHITE,1);
+	ST7735_DrawChar(ind + 7,  22,'=', ST7735_BLACK, ST7735_WHITE,1);
+	ST7735_DrawChar(ind + 13,  22, thousands+48, ST7735_BLACK, ST7735_WHITE,1);
+	ST7735_DrawChar(ind + 19,  22, hundreds+48, ST7735_BLACK, ST7735_WHITE,1);
+	ST7735_DrawChar(ind + 25,  22, tens+48, ST7735_BLACK, ST7735_WHITE,1);
+	ST7735_DrawChar(ind + 31,  22, ones+48, ST7735_BLACK, ST7735_WHITE,1);
 	
 	// Display on LCD a horizontal dotted line that is along 1/2 the value 
 	//  of the most number of occurances
@@ -335,4 +335,20 @@ void partE() {
 	ST7735_DrawChar(13,  92,hundreds+48, ST7735_BLACK, ST7735_WHITE,1);
 	ST7735_DrawChar(19,  92, tens+48, ST7735_BLACK, ST7735_WHITE,1);
 	ST7735_DrawChar(25,  92, ones+48, ST7735_BLACK, ST7735_WHITE,1);
+	
+	// Display on LCD a horizontal dotted line that is along the value of the
+	// most number of occurances
+	for(int i = 0; i < 125; i+=8)
+	{
+	   ST7735_DrawFastHLine(i, 42, 6, ST7735_BLACK);
+	}
+
+  hundreds = maxADCval / 100;
+	tens = (maxADCval / 10 ) % 10;
+	ones = maxADCval % 10;
+	ST7735_DrawChar(1,  34, 'Y', ST7735_BLACK, ST7735_WHITE,1);
+	ST7735_DrawChar(7,  34,'=', ST7735_BLACK, ST7735_WHITE,1);
+	ST7735_DrawChar(13,  34,hundreds+48, ST7735_BLACK, ST7735_WHITE,1);
+	ST7735_DrawChar(19,  34, tens+48, ST7735_BLACK, ST7735_WHITE,1);
+	ST7735_DrawChar(25,  34, ones+48, ST7735_BLACK, ST7735_WHITE,1);
 }
