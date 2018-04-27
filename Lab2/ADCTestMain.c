@@ -199,9 +199,11 @@ void Timer0A_Handler(void){
 }
 int main(void){
 	hardware_index = -1;
+
 	DisableInterrupts();
   PLL_Init(Bus80MHz);                   // 80 MHz
 	Output_Init();
+
   SYSCTL_RCGCGPIO_R |= 0x20;            // activate port F
   ADC0_InitSWTriggerSeq3_Ch9();         // allow time to finish activating
     Timer1_Init();
@@ -217,9 +219,13 @@ GPIO_PORTF_PUR_R |= 0x10;         // 5) pullup for PF4
   GPIO_PORTF_AMSEL_R = 0;               // disable analog functionality on PF
   PF2 = 0;                      // turn off LED
 	LETSDOITAGAIN:
+	for(int i = 0; i < 4096; i++)
+	{
+		ADCPMF[i] = 0;
+	}
 	data_processed = false;
 	hardware_index = hardware_index + 1;
-	hardware_index %= 4;
+	hardware_index = hardware_index == 4 ? 0 : hardware_index;
 	time_stamp_counter = 0;
 	EnableInterrupts();
   while(time_stamp_counter < 1000){
@@ -233,10 +239,7 @@ GPIO_PORTF_PUR_R |= 0x10;         // 5) pullup for PF4
 	}
 	DisableInterrupts();
 	Process_Data();
-	for(int i = 0; i < 4096; i++)
-	{
-		//ADCxValues[i] = i+1;
-	}
+
 
 	//ST7735_XYplot(4096, ADCxValues, ADCPMF);
   //DumpDebugData(false);
@@ -251,8 +254,8 @@ void partE() {
 			Output_Clear();
 	int tens = hardWareAverageVals[hardware_index] / 10;
 	int ones = hardWareAverageVals[hardware_index] %10;
-	ST7735_DrawChar(0,  0, 'x', ST7735_WHITE, ST7735_BLACK,2);
-	ST7735_DrawChar(tens == 0? 10:20,  0, 48+ones, ST7735_WHITE, ST7735_BLACK,2);
+	ST7735_DrawChar(0,  0, 'x', ST7735_YELLOW, ST7735_BLACK,2);
+	ST7735_DrawChar(tens == 0? 10:22,  0, 48+ones, ST7735_WHITE, ST7735_BLACK,2);
 	if(tens != 0)
 ST7735_DrawChar(10,  0, 48+tens, ST7735_WHITE, ST7735_BLACK,2);
 
@@ -293,22 +296,6 @@ ST7735_DrawChar(10,  0, 48+tens, ST7735_WHITE, ST7735_BLACK,2);
 }
 
 
-//************* ST7735_Line********************************************
-//  Draws one line on the ST7735 color LCD
-//  Inputs: (x1,y1) is the start point
-//          (x2,y2) is the end point
-// x1,x2 are horizontal positions, columns from the left edge
-//               must be less than 128
-//               0 is on the left, 126 is near the right
-// y1,y2 are vertical positions, rows from the top edge
-//               must be less than 160
-//               159 is near the wires, 0 is the side opposite the wires
-//        color 16-bit color, which can be produced by ST7735_Color565() 
-// Output: none
-void ST7735_Line(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, 
-                 uint16_t color) {
-									 
-								 }
 
 
 /*

@@ -445,11 +445,6 @@
               <FileType>1</FileType>
               <FilePath>.\Timer3.c</FilePath>
             </File>
-            <File>
-              <FileName>fixed.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\fixed.c</FilePath>
-            </File>
           </Files>
         </Group>
       </Groups>
