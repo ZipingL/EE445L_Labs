@@ -40,7 +40,7 @@ void partE(void);
 
 #define PF2             (*((volatile uint32_t *)0x40025010))
 #define PF1             (*((volatile uint32_t *)0x40025008))
-	#define PF4   (*((volatile uint32_t *)0x40025040))
+#define PF4   (*((volatile uint32_t *)0x40025040))
 
 void DisableInterrupts(void); // Disable interrupts
 void EnableInterrupts(void);  // Enable interrupts
@@ -48,7 +48,6 @@ long StartCritical (void);    // previous I bit, disable interrupts
 void EndCritical(long sr);    // restore I bit to previous value
 void WaitForInterrupt(void);  // low power mode
 
-volatile uint32_t ADCvalue;
 
 // global arrays
 volatile uint32_t Timer0Values[1000] = {0};
@@ -56,14 +55,14 @@ volatile uint32_t ADCvalues[1000] = {0};
 volatile uint32_t timeDifferences[999] = {0};
 volatile uint32_t ADCPMF[4096] = {0};
 uint32_t hardWareAverageVals[4] = {1, 4, 16, 64};
-//volatile uint32_t ADCxValues[4096] = {0};
 //global values
- volatile uint32_t timeDiff;
- volatile uint32_t timeMax;
- volatile uint32_t timeMin; 
- volatile uint32_t time_stamp_counter = 0;
-	int hardware_index = -1;
-  volatile  bool data_processed = false;
+volatile uint32_t ADCvalue;
+volatile uint32_t timeDiff;
+volatile uint32_t timeMax;
+volatile uint32_t timeMin; 
+volatile uint32_t time_stamp_counter = 0;
+int hardware_index = -1;
+volatile  bool data_processed = false;
 
 // Subroutine to wait 10 msec
 // Inputs: None
@@ -79,7 +78,7 @@ void DelayWait10ms(uint32_t n){uint32_t volatile time;
   }
 }
 
-
+// Implement PF4 Tm4c button to switch between hw averages
 void Pause(void){
   while(PF4==0x00){ 
     DelayWait10ms(10);
@@ -89,6 +88,8 @@ void Pause(void){
   }
 }
 
+// Finds extreme of an array
+// input max = false for min, true for max
 uint32_t Find_Extreme(uint32_t* array, uint32_t size, bool max){
 	
 	uint32_t extreme = max==true?0:0xFFFFFFFF;
@@ -104,19 +105,16 @@ uint32_t Find_Extreme(uint32_t* array, uint32_t size, bool max){
 	return extreme;
 }
 
+// creates 999 time differences and also the jitter
 uint32_t Process_Times() {
   timeDiff = 0;
 
 timeMax = timeDifferences[0];
 timeMin = 0xFFFFFFFF;
-	//FILE *fp = fopen("timeDebug.dat", "rb");
-	//printf("Time differences:\n");
-	//fprintf (fp, "Time differences\n");
+
   for(uint32_t i = 0; i < 999; i++)
   {
     timeDifferences[i] = Timer0Values[i] - Timer0Values[i+1];
-		//printf("%3d: %d\n", i, timeDifferences[i]);
-		//fprintf (fp, "%3d: %d\n", i, timeDifferences[i]);
   }
   
   for(uint32_t i = 1; i < 999; i++)
@@ -127,11 +125,10 @@ timeMin = 0xFFFFFFFF;
       timeMin = timeDifferences[i];
   }
   
-  timeDiff = timeMax - timeMin;
-	//printf("Time jitter: %d", timeDiff);
-			//fprintf (fp, "Time jitter: %d", timeDiff);
+  timeDiff = timeMax - timeMin; // jitter calc
   return timeDiff;
 }
+// Places ADC values in an array for PMF graph
 void Process_ADCValues() {
   for(int32_t i = 0; i < 1000; i++)
 	{
@@ -139,6 +136,7 @@ void Process_ADCValues() {
 	}
 }
 
+// Process times and adc values
 void Process_Data() {
 
   
@@ -174,6 +172,7 @@ void Timer0A_Init100HzInt(void){
   NVIC_PRI4_R = (NVIC_PRI4_R&0x00FFFFFF)|0x40000000; // top 3 bits
   NVIC_EN0_R = 1<<19;              // enable interrupt 19 in NVIC
 }
+// Records the time and adc value every 1000 Hz
 void Timer0A_Handler(void){
 
   TIMER0_ICR_R = TIMER_ICR_TATOCINT;    // acknowledge timer0A timeout
@@ -214,13 +213,13 @@ int main(void){
 		//Timer2_Init(0, 8100);
 		//Timer3_Init(0, 8100);
   Timer0A_Init100HzInt();               // set up Timer0A for 100 Hz interrupts
-GPIO_PORTF_PUR_R |= 0x10;         // 5) pullup for PF4
+	GPIO_PORTF_PUR_R |= 0x10;         // 5) pullup for PF4
   GPIO_PORTF_DIR_R |= 0x06;             // make PF2, PF1 out (built-in LED)
   GPIO_PORTF_AFSEL_R &= ~0x16;          // disable alt funct on PF2, PF1
   GPIO_PORTF_DEN_R |= 0x16;             // enable digital I/O on PF2, PF1
-                                        // configure PF2 as GPIO
+                                      // configure PF2 as GPIO
   GPIO_PORTF_PCTL_R = (GPIO_PORTF_PCTL_R&0xFFFFF00F)+0x00000000;
-  GPIO_PORTF_AMSEL_R = 0;               // disable analog functionality on PF
+	GPIO_PORTF_AMSEL_R = 0;               // disable analog functionality on PF
   PF2 = 0;                      // turn off LED
 	LETSDOITAGAIN:
 	for(int i = 0; i < 4096; i++)
@@ -228,51 +227,49 @@ GPIO_PORTF_PUR_R |= 0x10;         // 5) pullup for PF4
 		ADCPMF[i] = 0;
 	}
 	data_processed = false;
+	// increment the index to allow for new hw average value
 	hardware_index = hardware_index + 1;
 	hardware_index = hardware_index == 4 ? 0 : hardware_index;
 	time_stamp_counter = 0;
 	EnableInterrupts();
   while(time_stamp_counter < 1000){
     
-	   // Parts AB
+	  // Parts ABEF
     PF1 ^= 0x02;  // toggles when running in main
 		// Part C
 		//GPIO_PORTF_DATA_R ^= 0x02;
 		// Part D
-//PF1 = (PF1*12345678) / 1234567 + 0x02; // this line causes jitter
+    //PF1 = (PF1*12345678) / 1234567 + 0x02; // this line causes jitter
 	}
 	DisableInterrupts();
 	Process_Data();
-
-
-	//ST7735_XYplot(4096, ADCxValues, ADCPMF);
-  //DumpDebugData(false);
-
- partE();
- Pause();
- goto LETSDOITAGAIN;
+  partE();
+  Pause(); // wait for button press
+  goto LETSDOITAGAIN; // redo data collection but for a different hw average value
 }
 
 
+// Print out the adc values as pmf graph
 void partE() {
+    
   uint32_t maxADCval = Find_Extreme(ADCPMF, 4096, true);
 	ST7735_FillRect(0, 20, 128, 140, ST7735_WHITE);
 
+	// Display on LCD which hardware average adc values based on (e.g. x64)
 	int tens = hardWareAverageVals[hardware_index] / 10;
 	int ones = hardWareAverageVals[hardware_index] %10;
-		ST7735_FillRect(0, 0,29,20, ST7735_BLACK);
+	ST7735_FillRect(0, 0,29,20, ST7735_BLACK);
 	ST7735_DrawChar(0,  0, 'x', ST7735_YELLOW, ST7735_BLACK,2);
 	ST7735_DrawChar(tens == 0? 10:22,  0, 48+ones, ST7735_WHITE, ST7735_BLACK,2);
 	if(tens != 0)
-ST7735_DrawChar(10,  0, 48+tens, ST7735_WHITE, ST7735_BLACK,2);
+    ST7735_DrawChar(10,  0, 48+tens, ST7735_WHITE, ST7735_BLACK,2);
 
+  // display on LCD the PMF graph lines
 	uint32_t x_value = 20;
-	int ind = 0;
+	int ind = 0; 
 	int ind2 = 0;
 	for(int i = 0; i < 4096; i++)
 	{
-		
-		
 		if(ADCPMF[i] > 0)
 		{
 			if(ADCPMF[i] == maxADCval)
@@ -280,37 +277,37 @@ ST7735_DrawChar(10,  0, 48+tens, ST7735_WHITE, ST7735_BLACK,2);
 				ind = x_value;
 				ind2 = i;
 			}
-			long long  y = 0;
-			uint32_t round_y = 0;
-			// calculate proportional pixel coordinate from the given x y value
-			y = ((long long) ADCPMF[i]  + 0 );
-			
-			y *= 118*10;
-			
-			// round if needed
 
+			// proprotionalize the lengths of the graph lines
+			// to the lcd display, since ADCPMF[i] can contain
+			// values from 0 to 1000 while the lcd pixel screen height is
+			// 159
+			long long  y = 0; // holds the proprotionalized ADCPMF[i] value
+			uint32_t round_y = 0;
+			// calculate proportional pixel coordinate from the given ADCPMF[i] value
+			y = ((long long) ADCPMF[i]  + 0 );		
+			y *= 118*10;		
+			// round if needed
 			if( (y % 10) >= 5)
 				round_y = 1;
-
-			y /= 10;
-			
-			y /= (0 + maxADCval);
-			
+			y /= 10;		
+			y /= (0 + maxADCval);	
 			y+= round_y;
-			
-		
-			
+			// Graph the line, and make it 4 pixels thick
+			// swap between two colors for each line for better read clarity
 			ST7735_DrawFastVLineFlip(x_value++, 0, y, i%2 == 0? ST7735_MAGENTA: ST7735_GREEN);
 			ST7735_DrawFastVLineFlip(x_value++, 0, y, i%2 == 0? ST7735_MAGENTA: ST7735_GREEN);
 			ST7735_DrawFastVLineFlip(x_value++, 0, y, i%2 == 0? ST7735_MAGENTA: ST7735_GREEN);
 			ST7735_DrawFastVLineFlip(x_value++, 0, y, i%2 == 0? ST7735_MAGENTA: ST7735_GREEN);
 
 		}
-	}
+	} // end for (int i = 0; i < 4096...)
 	
+	// Display on LCD a vertical dotted line along plotted along
+	// the graph line of the adc value with the most occurances
 	for(int i = 0; i < 159; i+=8)
 	{
-  ST7735_DrawFastVLine( ind-1, i, 6, ST7735_BLACK);
+        ST7735_DrawFastVLine( ind-1, i, 6, ST7735_BLACK);
 	}
 	int thousands = ind2 / 1000;
 	int hundreds = (ind2 / 100) % 10;
@@ -323,12 +320,14 @@ ST7735_DrawChar(10,  0, 48+tens, ST7735_WHITE, ST7735_BLACK,2);
 	ST7735_DrawChar(ind + 24,  22, tens+48, ST7735_BLACK, ST7735_WHITE,1);
 	ST7735_DrawChar(ind + 30,  22, ones+48, ST7735_BLACK, ST7735_WHITE,1);
 	
+	// Display on LCD a horizontal dotted line that is along 1/2 the value 
+	//  of the most number of occurances
 	for(int i = 0; i < 125; i+=8)
 	{
-	ST7735_DrawFastHLine(i, 100, 6, ST7735_BLACK);
+	   ST7735_DrawFastHLine(i, 100, 6, ST7735_BLACK);
 	}
   int maxADCval_half = maxADCval / 2;
-   hundreds = maxADCval_half / 100;
+  hundreds = maxADCval_half / 100;
 	tens = (maxADCval_half / 10 ) % 10;
 	ones = maxADCval_half % 10;
 	ST7735_DrawChar(1,  92, 'Y', ST7735_BLACK, ST7735_WHITE,1);
@@ -336,34 +335,4 @@ ST7735_DrawChar(10,  0, 48+tens, ST7735_WHITE, ST7735_BLACK,2);
 	ST7735_DrawChar(13,  92,hundreds+48, ST7735_BLACK, ST7735_WHITE,1);
 	ST7735_DrawChar(19,  92, tens+48, ST7735_BLACK, ST7735_WHITE,1);
 	ST7735_DrawChar(25,  92, ones+48, ST7735_BLACK, ST7735_WHITE,1);
-	
-
 }
-
-
-
-
-/*
-void DumpDebugData(bool text) {
-	
-	//remove("timeDebug.dat");
-	//FILE *fp = NULL;
-  //if(text)
-	//fp = fopen("timeDebug.dat", "rb");
-	//else
-	printf("Time differences:\n");
-	//if(text)
-	//fprintf (fp, "Time differences\n");
-  for(uint32_t i = 0; i < 999; i++)
-  {
-		if(!text)
-		printf("%3d: %d\n", i, timeDifferences[i]);
-		//else
-		//fprintf (fp, "%3d: %d\n", i, timeDifferences[i]);
-  }
-  
-  		if(!text)
-	printf("Time jitter: %d", timeDiff);
-			//else
-  //fprintf (fp, "Time jitter: %d", timeDiff); 
-}*/
