@@ -251,7 +251,8 @@ void partE() {
 			Output_Clear();
 	int tens = hardWareAverageVals[hardware_index] / 10;
 	int ones = hardWareAverageVals[hardware_index] %10;
-	ST7735_DrawChar(tens == 0? 0:9,  0, 48+ones, ST7735_WHITE, ST7735_BLACK,2);
+	ST7735_DrawChar(0,  0, 'x', ST7735_WHITE, ST7735_BLACK,2);
+	ST7735_DrawChar(tens == 0? 10:20,  0, 48+ones, ST7735_WHITE, ST7735_BLACK,2);
 	if(tens != 0)
 ST7735_DrawChar(0,  0, 48+tens, ST7735_WHITE, ST7735_BLACK,2);
 
