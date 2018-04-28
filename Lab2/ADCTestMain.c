@@ -204,7 +204,7 @@ void Timer0A_Handler(void){
   }
 
 }
-int main(void){
+int main(void){vnz/x.c,vm
 	hardware_index = -1;
 	
 	DisableInterrupts();
