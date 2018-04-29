@@ -44,6 +44,7 @@ The clock must be able to perform five functions.
 #include "driver-sound.h"
 #include "driver-switch.h"
 #include "driver-systick.h"
+#include "stdbool.h"
 
 void DelayWait10ms(uint32_t n);
 void PortF_Init(void);
@@ -59,10 +60,9 @@ int main(void){
 	PLL_Init(Bus80MHz); 
 	PortF_Init();
 	Output_Init();
-  while(1){
-    DelayWait10ms(100);
-    PF2 ^= 0x04;
-  }
+	ClockTimerInit();
+	
+	while(true){}
 }
 
 
