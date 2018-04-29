@@ -46,40 +46,40 @@
 #define NVIC_ST_RELOAD_M        0x00FFFFFF  // Counter load value
 
 
-uint8_t tenth_seconds_counter = 0;
-uint8_t seconds_counter = 0;
-uint8_t minutes_counter = 0;
-uint8_t hours_counter = 0;
-uint8_t heartbeat_counter = 0;
-bool ante_meridiem = true;
+int8_t hundreth_seconds_counter = 10;
+int8_t seconds_counter = 30;
+int8_t minutes_counter = 4;
+int8_t hours_counter = 10;
+uint32_t heartbeat_counter = 0;
+bool ante_meridiem = false;
 
 void SysTick_Handler(void){
 
 	// Heartbeat every second
-	if(heartbeat_counter++ % 5 == 0)
+	if(heartbeat_counter % 500 == 0)
 		GPIO_PORTF_DATA_R ^= 0x04;       // toggle PF2
 	
 	// Increment times
-	
+	if(heartbeat_counter++ % 10 == 0)
 	// once tenth seconds reaches a total of one second..
-	if(++tenth_seconds_counter % 10 == 0)
-	{
-		//.. increment seconds counter and reset tenths counter
-		tenth_seconds_counter = 0;
-		if(++seconds_counter % 60 == 0)
+		if(++hundreth_seconds_counter % 100 == 0)
 		{
-			seconds_counter = 0;
-			if(++minutes_counter % 60 == 0)
+			//.. increment seconds counter and reset tenths counter
+			hundreth_seconds_counter = 0;
+			if(++seconds_counter % 60 == 0)
 			{
-				minutes_counter = 0;
-				if(++hours_counter % 12 == 0)
+				seconds_counter = 0;
+				if(++minutes_counter % 60 == 0)
 				{
-					hours_counter = 0;
-					ante_meridiem = !ante_meridiem;
-				} // end if(++hours...
-			} // end if(++minutes...
-		} // end if(++seconds...
-	} // end if(++ tenth_seconds...
+					minutes_counter = 0;
+					if( (++hours_counter-1) % 12 == 0)
+					{
+						hours_counter = 1;
+						ante_meridiem = !ante_meridiem;
+					} // end if(++hours...
+				} // end if(++minutes...
+			} // end if(++seconds...
+		} // end if(++ tenth_seconds...
 }
 
 
@@ -95,5 +95,5 @@ void SysTick_Init(unsigned long period){
 
 void ClockTimerInit()
 {
-	SysTick_Init(8000000); // Every 0.1 Seconds, assuming 80MHz clock
+	SysTick_Init(80000); // Every 0.001 Seconds, assuming 80MHz clock
 }

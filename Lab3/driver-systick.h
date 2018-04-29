@@ -39,12 +39,12 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-extern uint8_t tenth_seconds_counter;
-extern uint8_t seconds_counter;
-extern uint8_t minutes_counter;
-extern uint8_t hours_counter;
-extern uint8_t heartbeat_counter;
+extern int8_t hundreth_seconds_counter;
+extern int8_t seconds_counter;
+extern int8_t minutes_counter;
+extern int8_t hours_counter;
 extern bool ante_meridiem;
+extern uint32_t heartbeat_counter;
 
 void ClockTimerInit(void);
 

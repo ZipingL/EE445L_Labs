@@ -61,8 +61,12 @@ int main(void){
 	PortF_Init();
 	Output_Init();
 	ClockTimerInit();
-	
-	while(true){}
+	draw_digital_time(seconds_counter, minutes_counter, hours_counter, ante_meridiem);
+	while(true){
+		
+		if(heartbeat_counter % 100 == 0)
+				draw_digital_time(seconds_counter, minutes_counter, hours_counter, ante_meridiem);
+	}
 }
 
 
