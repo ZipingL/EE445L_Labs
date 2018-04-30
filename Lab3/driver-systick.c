@@ -17,7 +17,7 @@
    "Embedded Systems: Introduction to ARM Cortex M Microcontrollers",
    ISBN: 978-1469998749, Jonathan Valvano, copyright (c) 2015
    Volume 1, Program 4.7
-   
+
    "Embedded Systems: Real Time Interfacing to ARM Cortex M Microcontrollers",
    ISBN: 978-1463590154, Jonathan Valvano, copyright (c) 2015
    Program 2.11, Section 2.6
@@ -53,18 +53,20 @@ int8_t hours_counter = 10;
 uint32_t heartbeat_counter = 0;
 bool ante_meridiem = false;
 
+
 void SysTick_Handler(void){
+
 
 	// Heartbeat every second
 	if(heartbeat_counter % 500 == 0)
 		GPIO_PORTF_DATA_R ^= 0x04;       // toggle PF2
-	
+
 	// Increment times
 	if(heartbeat_counter++ % 10 == 0)
-	// once tenth seconds reaches a total of one second..
+	// once hundreth seconds reaches a total of one second..
 		if(++hundreth_seconds_counter % 100 == 0)
 		{
-			//.. increment seconds counter and reset tenths counter
+			//.. increment seconds counter and reset hundreth counter
 			hundreth_seconds_counter = 0;
 			if(++seconds_counter % 60 == 0)
 			{
@@ -75,11 +77,13 @@ void SysTick_Handler(void){
 					if( (++hours_counter-1) % 12 == 0)
 					{
 						hours_counter = 1;
-						ante_meridiem = !ante_meridiem;
+						if(hours_counter % 12)
+							ante_meridiem = !ante_meridiem;
 					} // end if(++hours...
 				} // end if(++minutes...
 			} // end if(++seconds...
 		} // end if(++ tenth_seconds...
+
 }
 
 
@@ -87,7 +91,7 @@ void SysTick_Init(unsigned long period){
   NVIC_ST_CTRL_R = 0;         // disable SysTick during setup
   NVIC_ST_RELOAD_R = period-1;// reload value
   NVIC_ST_CURRENT_R = 0;      // any write to current clears it
-  NVIC_SYS_PRI3_R = (NVIC_SYS_PRI3_R&0x00FFFFFF)|0x40000000; // priority 2           
+  NVIC_SYS_PRI3_R = (NVIC_SYS_PRI3_R&0x00FFFFFF)|0x40000000; // priority 2
   NVIC_ST_CTRL_R = 0x07; // enable SysTick with core clock and interrupts
   // enable interrupts after all initialization is finished
 }

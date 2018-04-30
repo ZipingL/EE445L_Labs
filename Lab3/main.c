@@ -49,39 +49,37 @@ The clock must be able to perform five functions.
 void DelayWait10ms(uint32_t n);
 void PortF_Init(void);
 #define PF2   (*((volatile uint32_t *)0x40025010))
+void EnableInterrupts(void);
 
 
+char lastkey = 0;
 
 void SystemInit(void){
 }
 
 int main(void){ 
-
 	PLL_Init(Bus80MHz); 
 	PortF_Init();
 	Output_Init();
 	ClockTimerInit();
+  initKeypadSwitchPorts();
+	EnableInterrupts();
 	draw_digital_time(seconds_counter, minutes_counter, hours_counter, ante_meridiem);
 	while(true){
 		
 		if(heartbeat_counter % 100 == 0)
+		{
 				draw_digital_time(seconds_counter, minutes_counter, hours_counter, ante_meridiem);
+		}
+
+		char keypressed = getKey();
+		if( keypressed != 0 && lastkey != keypressed)
+		{
+		ST7735_DrawChar(0,0,keypressed,ST7735_GREEN,ST7735_BLACK, 2); 
+		ST7735_DrawChar(12,0,lastkey,ST7735_GREEN,ST7735_BLACK, 2); 
+		lastkey = keypressed;
+		}
 	}
-}
-
-
-// Subroutine to wait 10 msec
-// Inputs: None
-// Outputs: None
-// Notes: ...
-void DelayWait10ms(uint32_t n){uint32_t volatile time;
-  while(n){
-    time = 727240*2/91;  // 10msec
-    while(time){
-	  	time--;
-    }
-    n--;
-  }
 }
 
 // PF4 is input
