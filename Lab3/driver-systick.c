@@ -50,6 +50,15 @@ int8_t hundreth_seconds_counter = 10;
 int8_t seconds_counter = 30;
 int8_t minutes_counter = 4;
 int8_t hours_counter = 10;
+
+
+int8_t alarm_seconds_counter;
+int8_t alarm_minutes_counter;
+int8_t alarm_hours_counter;
+bool alarm_ante_meridiem;
+bool alarm_set = false;
+bool ring_alarm = false;
+
 uint32_t heartbeat_counter = 0;
 bool ante_meridiem = false;
 
@@ -59,8 +68,19 @@ void SysTick_Handler(void){
 
 	// Heartbeat every second
 	if(heartbeat_counter % 500 == 0)
+	{
+		if(alarm_set)
+		{
+			if(alarm_seconds_counter == seconds_counter &&
+				 alarm_minutes_counter == minutes_counter &&
+			   alarm_hours_counter == hours_counter &&
+			   alarm_ante_meridiem == ante_meridiem)
+			{
+				ring_alarm = true;
+			}
+		}
 		GPIO_PORTF_DATA_R ^= 0x04;       // toggle PF2
-
+	}
 	// Increment times
 	if(heartbeat_counter++ % 10 == 0)
 	// once hundreth seconds reaches a total of one second..

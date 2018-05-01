@@ -50,9 +50,15 @@ void DelayWait10ms(uint32_t n);
 void PortF_Init(void);
 #define PF2   (*((volatile uint32_t *)0x40025010))
 void EnableInterrupts(void);
-
+void DisableInterrupts(void);
+void editClock(char keypressed);
+void editTime(void);
+void editAlarm(void);
+bool updateEditedTime(int8_t* sec, int8_t * min, int8_t * hr, bool* AM, int8_t counters[], int8_t place);
 
 char lastkey = 0;
+		int digital_color = ST7735_YELLOW;
+
 
 void SystemInit(void){
 }
@@ -62,24 +68,294 @@ int main(void){
 	PortF_Init();
 	Output_Init();
 	ClockTimerInit();
-  initKeypadSwitchPorts();
+  initKeypad();
 	EnableInterrupts();
-	draw_digital_time(seconds_counter, minutes_counter, hours_counter, ante_meridiem);
+
+	draw_digital_time(seconds_counter, minutes_counter, hours_counter, ante_meridiem, digital_color);
 	while(true){
+		
+		if(ring_alarm == true)
+		{
+			
+			digital_color = ST7735_RED;
+		}
+		else {
+			digital_color = ST7735_YELLOW;
+		}
 		
 		if(heartbeat_counter % 100 == 0)
 		{
-				draw_digital_time(seconds_counter, minutes_counter, hours_counter, ante_meridiem);
+				draw_digital_time(seconds_counter, minutes_counter, hours_counter, ante_meridiem, digital_color);
 		}
 
 		char keypressed = getKey();
 		if( keypressed != 0 && lastkey != keypressed)
 		{
-		ST7735_DrawChar(0,0,keypressed,ST7735_GREEN,ST7735_BLACK, 2); 
-		ST7735_DrawChar(12,0,lastkey,ST7735_GREEN,ST7735_BLACK, 2); 
-		lastkey = keypressed;
+			lastkey = keypressed;
+			ST7735_DrawChar(0,0,keypressed,ST7735_GREEN,ST7735_BLACK, 2); 
+			ST7735_DrawChar(12,0,lastkey,ST7735_GREEN,ST7735_BLACK, 2);
+			if(keypressed == 'A' || keypressed == 'C')
+			{
+				editClock(keypressed);
+			}
+			else if(keypressed == '#')
+			{
+				ring_alarm = false;
+			}
 		}
 	}
+}
+
+void editClock(char keypressed){
+	
+	if(keypressed == 'A')
+		editAlarm();
+	if(keypressed == 'C')
+		editTime();
+	
+}
+
+void editAlarm(void) {
+	int8_t seconds = alarm_seconds_counter;
+	int8_t minutes = alarm_minutes_counter;
+	int8_t hours = alarm_hours_counter;
+	bool AM = alarm_ante_meridiem;
+	uint32_t counter = 0;
+	int8_t counters[7] = {0};
+	
+	char keypressed = 0;
+	char lastkey = 'C';
+	int8_t place = 0;
+	DelayWait10ms(1);
+	bool flip = false;
+	bool clock_value_entered = false;
+	while(true){
+		
+		if(counter++ % 500000 == 0)
+		{
+			if(flip)
+				cover_digital_time(place);
+			else
+			{
+				if(clock_value_entered == false)
+				draw_digital_time_edit(seconds, minutes, hours,AM, ST7735_RED, place, 'A');
+				else
+				draw_digital_time(seconds, minutes, hours, AM, ST7735_RED);
+			}
+			flip = !flip;
+		}
+		
+
+		keypressed = getKey();
+		if( keypressed != 0 && lastkey != keypressed)
+		{
+			if(keypressed == 'C')
+			{
+				clock_value_entered = false;
+				place++;		
+
+			}
+			
+			else if(keypressed == '*')
+			{
+				DisableInterrupts();
+				alarm_set = false;
+				EnableInterrupts();
+				return;
+			}
+
+			else if( keypressed == 'D')
+			{
+				DisableInterrupts();
+				alarm_set = true;
+				alarm_seconds_counter = seconds;
+				alarm_minutes_counter = minutes;
+				alarm_hours_counter = hours;
+				alarm_ante_meridiem = AM;
+				EnableInterrupts();
+				return;
+			}
+			
+			else
+			{
+				counters[place] = keypressed - 48;
+				bool success = updateEditedTime(&seconds, &minutes, &hours, &AM, counters, place);
+				clock_value_entered = success == true ? true : false;
+			}
+			lastkey = keypressed;
+		}
+	}
+}
+
+void editTime(void){
+	int8_t seconds = seconds_counter;
+	int8_t minutes = minutes_counter;
+	int8_t hours = hours_counter;
+	bool AM = ante_meridiem;
+	uint32_t counter = 0;
+	int8_t counters[7] = {0};
+	
+	char keypressed = 0;
+	char lastkey = 'C';
+	int8_t place = 0;
+	DelayWait10ms(1);
+	bool flip = false;
+	bool clock_value_entered = false;
+	while(true){
+		
+		if(counter++ % 500000 == 0)
+		{
+			if(flip)
+				cover_digital_time(place);
+			else
+			{
+				if(clock_value_entered == false)
+				draw_digital_time_edit(seconds, minutes, hours,AM, digital_color, place, 'T');
+				else
+				draw_digital_time(seconds, minutes, hours, AM, digital_color);
+			}
+			flip = !flip;
+		}
+		
+
+		keypressed = getKey();
+		if( keypressed != 0 && lastkey != keypressed)
+		{
+			if(keypressed == 'C')
+			{
+				place++;		
+				clock_value_entered = false;
+			}
+
+			else if( keypressed == 'D')
+			{
+				DisableInterrupts();
+				seconds_counter = seconds;
+				minutes_counter = minutes;
+				hours_counter = hours;
+				ante_meridiem = AM;
+				EnableInterrupts();
+				return;
+			}
+			
+			else
+			{
+				counters[place] = keypressed - 48;
+				bool success = updateEditedTime(&seconds, &minutes, &hours, &AM, counters, place);
+				clock_value_entered = success == true ? true : false;
+			}
+			lastkey = keypressed;
+		}
+	}
+}
+
+bool updateEditedTime(int8_t* sec, int8_t * min, int8_t * hr, bool* AM, int8_t counters[], int8_t place)
+{
+			uint8_t temp = 0;
+	bool success = false;
+	switch(place)
+	{
+
+		case 0:
+			*AM = counters[0];
+			success = true;
+			break;
+		case 1:
+		{
+			 temp = *hr;
+			*hr = (*hr) % 10;
+			*hr = (*hr) + counters[1]*10;
+			
+			if(counters[1] > 1 || counters[1] < 0)
+			{
+				*hr = temp;
+				return false;
+			}
+			success = true;
+			break;
+		}
+		case 2:
+		{
+			temp = *hr;
+			*hr = ((*hr) / 10) * 10;
+			*hr = (*hr) + counters[2];
+			if(counters[2] > 9 ||  counters[2] < 0 )
+			{
+				*hr = temp;
+				return false;
+			}
+			if(( (temp/10) < 1 && counters[2] < 1))
+				{
+					(*hr)++;
+					return false;
+				}
+				
+		  if(( (temp/10) > 0 && counters[2] > 2))
+			{
+				*hr = temp;
+				return false;
+			}
+			success = true;
+			break;
+
+		}
+		case 3:
+		{
+			temp = *min;
+			*min = (*min) % 10;
+			*min = (*min) + counters[3]*10;
+			if(counters[3] > 5 || counters[3] < 0)
+			{
+				*min = temp;
+				return false;
+			}
+			success = true;
+						break;
+
+		}
+		case 4:
+		{
+			temp = *min;
+			*min = ((*min) / 10) * 10;
+			*min = (*min) + counters[4];
+			if(counters[4] > 9 || counters[4] < 0)
+			{
+				*min = temp;
+				return false;
+			}
+			success = true;
+						break;
+
+		}
+		case 5:
+		{
+			temp = *sec;
+			*sec = (*sec) % 10;
+			*sec = (*sec) + counters[5]*10;
+			if(counters[5] > 5 || counters[5] < 0)
+			{
+				*min = temp;
+				return false;
+			}
+			success = true;
+						break;
+
+		}
+		case 6:
+		{
+			temp = *sec;
+			*sec = ((*sec) / 10) * 10;
+			*sec = (*sec) + counters[6];
+			if(counters[6] > 9 || counters[6] < 0)
+			{
+				*min = temp;
+				return false;
+			}
+			success = true;
+						break;
+		}
+	} // end switch()
+	return success;
 }
 
 // PF4 is input

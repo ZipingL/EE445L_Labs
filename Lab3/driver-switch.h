@@ -2,6 +2,6 @@
 #define DRIVER_SWITCH_H
 
 char getKey(void);
-void initKeypadSwitchPorts(void);
+void initKeypad(void);
 
 #endif

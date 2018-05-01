@@ -44,6 +44,13 @@ extern int8_t seconds_counter;
 extern int8_t minutes_counter;
 extern int8_t hours_counter;
 extern bool ante_meridiem;
+
+extern int8_t alarm_seconds_counter;
+extern int8_t alarm_minutes_counter;
+extern int8_t alarm_hours_counter;
+extern bool alarm_ante_meridiem;
+extern bool alarm_set;
+extern bool ring_alarm;
 extern uint32_t heartbeat_counter;
 
 void ClockTimerInit(void);

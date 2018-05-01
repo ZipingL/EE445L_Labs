@@ -15,14 +15,68 @@ char  s_PM[3] = {'P', 'M', 0};
 
 char* time_to_string(int8_t sec, int8_t min, int8_t hour, int8_t hundreth_sec, char* string);
 
-void draw_digital_time_hundreth( int8_t sec, int8_t min, int8_t hour, int8_t hundreth_sec, bool AM)
+void draw_digital_time_edit( int8_t sec, int8_t min, int8_t hour, bool AM, int color, int place, char edit)
+{
+	int8_t hundreth_sec = -1;
+	char string[12];
+	char * s_am_pm = AM == true ? s_AM : s_PM;
+	
+	if(place == 0)
+	for(int i = 0; s_am_pm[i] != NULL; i++)
+	{
+			ST7735_DrawChar(64 - 4*CHAR_PIXEL_LEN + i*CHAR_PIXEL_LEN_SMALL, 76 + DIGITAL_DISPLAY_HEIGHT, edit, 
+			color, ST7735_BLACK, 1);
+	}
+	else 
+	for(int i = 0; s_am_pm[i] != NULL; i++)
+	{
+			ST7735_DrawChar(64 - 4*CHAR_PIXEL_LEN + i*CHAR_PIXEL_LEN_SMALL, 76 + DIGITAL_DISPLAY_HEIGHT, s_am_pm[i], 
+			color, ST7735_BLACK, 1);
+	}
+	
+	time_to_string(sec, min, hour, hundreth_sec, string);
+	
+	for(int i = 0; i < 3; i++)
+	{
+		if(place == (i+1) && i != 2)
+		ST7735_DrawChar(64 - 5*CHAR_PIXEL_LEN_SMALL + i*CHAR_PIXEL_LEN, 76 + DIGITAL_DISPLAY_HEIGHT, edit, 
+			color, ST7735_BLACK, 2);
+		else
+		ST7735_DrawChar(64 - 5*CHAR_PIXEL_LEN_SMALL + i*CHAR_PIXEL_LEN, 76 + DIGITAL_DISPLAY_HEIGHT, string[i], 
+			color, ST7735_BLACK, 2);
+	}
+  for(int i = 3; i < 5; i++)
+	{
+		if(place == (i))
+		ST7735_DrawChar(64 - 5*CHAR_PIXEL_LEN_SMALL + i*CHAR_PIXEL_LEN, 76 + DIGITAL_DISPLAY_HEIGHT, edit, 
+			color, ST7735_BLACK, 2);
+		else
+		ST7735_DrawChar(64 - 5*CHAR_PIXEL_LEN_SMALL + i*CHAR_PIXEL_LEN, 76 + DIGITAL_DISPLAY_HEIGHT, string[i], 
+			color, ST7735_BLACK, 2);
+	}
+	
+	for(int i = 5; string[i] != NULL; i++)
+	{
+		if(place == i)
+		ST7735_DrawChar(64 - 2*CHAR_PIXEL_LEN + 4*CHAR_PIXEL_LEN + (i-3)*CHAR_PIXEL_LEN_SMALL, 83 + DIGITAL_DISPLAY_HEIGHT, 
+		edit, color, ST7735_BLACK, 1);
+		else
+		{
+		ST7735_DrawChar(64 - 2*CHAR_PIXEL_LEN + 4*CHAR_PIXEL_LEN + (i-3)*CHAR_PIXEL_LEN_SMALL, 83 + DIGITAL_DISPLAY_HEIGHT, 
+		string[i], color, ST7735_BLACK, 1);
+		}
+	}
+}
+
+
+void draw_digital_time_hundreth( int8_t sec, int8_t min, int8_t hour, int8_t hundreth_sec, bool AM, int color)
 {
 	char string[12];
 	char * s_am_pm = AM == true ? s_AM : s_PM;
 	for(int i = 0; s_am_pm[i] != NULL; i++)
 	{
 			ST7735_DrawChar(64 - 4*CHAR_PIXEL_LEN + i*CHAR_PIXEL_LEN_SMALL, 76 + DIGITAL_DISPLAY_HEIGHT, s_am_pm[i], 
-			ST7735_YELLOW, ST7735_BLACK, 1);
+			color, ST7735_BLACK, 1);
 	}
 	
 	time_to_string(sec, min, hour, hundreth_sec, string);
@@ -30,18 +84,64 @@ void draw_digital_time_hundreth( int8_t sec, int8_t min, int8_t hour, int8_t hun
 	for(int i = 0; i < 5; i++)
 	{
 		ST7735_DrawChar(64 - 5*CHAR_PIXEL_LEN_SMALL + i*CHAR_PIXEL_LEN, 76 + DIGITAL_DISPLAY_HEIGHT, string[i], 
-			ST7735_YELLOW, ST7735_BLACK, 2);
+			color, ST7735_BLACK, 2);
 	}
 	for(int i = 5; string[i] != NULL; i++)
 	{
 		ST7735_DrawChar(64 - 2*CHAR_PIXEL_LEN + 4*CHAR_PIXEL_LEN + (i-3)*CHAR_PIXEL_LEN_SMALL, 83 + DIGITAL_DISPLAY_HEIGHT, 
-		string[i], ST7735_YELLOW, ST7735_BLACK, 1);
+		string[i], color, ST7735_BLACK, 1);
 	}
 }
 
-void draw_digital_time( int8_t sec, int8_t min, int8_t hour, bool AM )
+void cover_digital_time(int8_t place)
 {
-	draw_digital_time_hundreth(sec, min, hour, -1, AM);
+	switch(place)
+	{
+		case 0:
+		{
+			ST7735_FillRect(64-4*CHAR_PIXEL_LEN, 76+DIGITAL_DISPLAY_HEIGHT, CHAR_PIXEL_LEN_SMALL*2, CHAR_PIXEL_LEN_SMALL+1, ST7735_BLACK);
+			break;
+		}
+		case 1:
+		{
+		  ST7735_FillRect(64 - 5*CHAR_PIXEL_LEN_SMALL, 76 + DIGITAL_DISPLAY_HEIGHT, CHAR_PIXEL_LEN, CHAR_PIXEL_LEN+2, ST7735_BLACK);
+			break;
+		}
+		case 2:
+		{
+		  ST7735_FillRect(64 - 5*CHAR_PIXEL_LEN_SMALL + CHAR_PIXEL_LEN, 76 + DIGITAL_DISPLAY_HEIGHT, CHAR_PIXEL_LEN, CHAR_PIXEL_LEN+2, ST7735_BLACK);
+			break;
+		}
+		case 3:
+		{
+			ST7735_FillRect(64 - 5*CHAR_PIXEL_LEN_SMALL + CHAR_PIXEL_LEN*3, 76 + DIGITAL_DISPLAY_HEIGHT, CHAR_PIXEL_LEN, CHAR_PIXEL_LEN+2, ST7735_BLACK);
+			break;
+		}
+		case 4:
+		{
+			ST7735_FillRect(64 - 5*CHAR_PIXEL_LEN_SMALL + CHAR_PIXEL_LEN*4, 76 + DIGITAL_DISPLAY_HEIGHT, CHAR_PIXEL_LEN, CHAR_PIXEL_LEN+2, ST7735_BLACK);
+			break;
+		}
+		case 5:
+		{
+		  ST7735_DrawChar(64 - 2*CHAR_PIXEL_LEN + 4*CHAR_PIXEL_LEN + (5-3)*CHAR_PIXEL_LEN_SMALL, 83 + DIGITAL_DISPLAY_HEIGHT, 
+		  CHAR_PIXEL_LEN_SMALL, CHAR_PIXEL_LEN_SMALL+1, ST7735_BLACK, 1);
+			break;
+		}
+		case 6:
+		{
+		  ST7735_DrawChar(64 - 2*CHAR_PIXEL_LEN + 4*CHAR_PIXEL_LEN + (6-3)*CHAR_PIXEL_LEN_SMALL, 83 + DIGITAL_DISPLAY_HEIGHT, 
+		  CHAR_PIXEL_LEN_SMALL, CHAR_PIXEL_LEN_SMALL+1, ST7735_BLACK, 1);
+			break;
+		}
+			
+			
+	}
+}
+
+void draw_digital_time( int8_t sec, int8_t min, int8_t hour, bool AM , int color)
+{
+	draw_digital_time_hundreth(sec, min, hour, -1, AM, color);
 }
 
 char* time_to_string(int8_t sec, int8_t min, int8_t hour, int8_t hundreth_sec, char* string) 

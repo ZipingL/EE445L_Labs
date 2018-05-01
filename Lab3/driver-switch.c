@@ -3,7 +3,8 @@
 // Provide functions that initialize GPIO ports and SysTick 
 // Use periodic polling
 // Daniel Valvano
-// August 11, 2014
+// modified by ziping liu
+// april 30, 2018
 
 /* This example accompanies the book
    "Embedded Systems: Real Time Interfacing to Arm Cortex M Microcontrollers",
@@ -28,17 +29,23 @@ Copyright 2014 by Jonathan W. Valvano, valvano@mail.utexas.edu
 /* 4x4 Matrix layout: 
 https://cdn.instructables.com/F1U/U8SR/IFF8A3BR/F1UU8SRIFF8A3BR.LARGE.jpg
 
-ROWS
-8 : PE4
-7 : PE3
-6 : PE2
-5 : PE1
+// Rows    //
+keypad 
+pin     
+8 			<-wire-> PE4 
+7 			<------> PE3
+6 			<------> PE2 
+5 			<------> PE1 
 
-COLS
-4 : PD3
-3 : PD2
-2 : PD1
-1 : PD0
+// Columns //
+keypad
+pin
+4 			<------> PD3 <--->10K Ohm<---> 3.3 VCC
+3 			<------> PD2 <--->10K Ohm<---> 3.3 VCC
+2 			<------> PD1 <--->10K Ohm<---> 3.3 VCC
+1 			<------> PD0 <--->10K Ohm<---> 3.3 VCC
+
+
 
 
 */
@@ -48,7 +55,7 @@ COLS
 #include "../inc/tm4c123gh6pm.h"
 #include "driver-switch.h"
 #include "ST7735.h"
-#include "FIFO.h"
+//#include "FIFO.h"
 
 #define PE4 0x10; //0b00010000 
 #define PE3 0x08; //0b00001000 
@@ -59,7 +66,12 @@ COLS
 #define FIFOSUCCESS 1         // return value on success
 #define FIFOFAIL    0         // return value on failure
                               // create index implementation FIFO (see FIFO.h)
-AddIndexFifo(Matrix, 16, char, 1, 0) // create a FIFO
+															
+															
+char Key_Fifo[4];
+uint8_t fifo_start = 0;
+uint8_t fifo_end = 0;
+
 char scanKeys(void);
 char scanKeysMethod2(int * num);
 
@@ -72,7 +84,8 @@ void Timer0A_Handler(void){
 	char thisKey = scanKeysMethod2(&keypresses);
 	if(thisKey != lastKey && keypresses <= 1 )
 	{
-		MatrixFifo_Put(thisKey);
+		Key_Fifo[fifo_end] = thisKey;
+		fifo_end = (++fifo_end) % 4;
 		lastKey = thisKey;
 	}
 	else{
@@ -113,7 +126,7 @@ void DelayWait10ms(uint32_t n){uint32_t volatile time;
   }
 }
 
-void initKeypadSwitchPorts()
+void initKeypad()
 {
   //SYSCTL_RCGCGPIO_R |= 0x18;        // 1) activate clock for Port F
   //while((SYSCTL_PRGPIO_R&0x18)==0){}; // allow time for clock to start
@@ -136,7 +149,6 @@ void initKeypadSwitchPorts()
 		
 	Timer0A_Init();
 		
-	MatrixFifo_Init();
 	
 	}
 
@@ -243,12 +255,12 @@ char scanKeysMethod2(int* num)
 			}
 		}
 	}
-	DONE:
 	GPIO_PORTE_DIR_R &= ~0x1E;
 
 		return key;
 }
 
+// Doesn't work nearly as well, doesn't require VCC to columns
 char scanKeys()
 {
 
@@ -291,6 +303,10 @@ char scanKeys()
 char getKey()
 {
 	char letter = 0;
-	MatrixFifo_Get(&letter) == FIFOFAIL;
-		return letter;
+	if(fifo_start != fifo_end)
+	{
+	letter = Key_Fifo[fifo_start];
+	fifo_start = (++fifo_start) % 4;
+	}
+	return letter;
 }
