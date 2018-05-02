@@ -63,36 +63,15 @@ uint32_t heartbeat_counter = 0;
 bool ante_meridiem = false;
 bool flip = false;
 bool flip2 = false;
-void SysTick_Handler(void){
-	
-	
-	if(heartbeat_counter % 100 == 0)
-	{
-		scanKeyPad();
-	}
 
-
-	// Heartbeat every second
-	if(heartbeat_counter % 500 == 0)
-	{
-		if(alarm_set)
-		{
-			if(alarm_seconds_counter == seconds_counter &&
-				 alarm_minutes_counter == minutes_counter &&
-			   alarm_hours_counter == hours_counter &&
-			   alarm_ante_meridiem == ante_meridiem)
-			{
-				ring_alarm = true;
-			}
-		}
-		GPIO_PORTF_DATA_R ^= 0x04;       // toggle PF2
-	}
-		
+// Rings the alarm like this:
+// beep beep, pause, beep beep, pause
+void ringAlarm() {
+	
 	if(heartbeat_counter % ( 600) == 0)
 	{
 		flip = !flip;
 	}
-	
 	if(heartbeat_counter % 100 == 0)
 	{
 		flip2 = !flip2;
@@ -102,15 +81,15 @@ void SysTick_Handler(void){
 	{
 		if(flip)
 		{
-							
-							if(flip2)
-							{
-									TIMER0_CTL_R |= 0x00000001; 
-							}
-							else
-							{
-									TIMER0_CTL_R &= ~0x00000001;
-							}
+			
+			if(flip2)
+			{
+					TIMER0_CTL_R |= 0x00000001; 
+			}
+			else
+			{
+					TIMER0_CTL_R &= ~0x00000001;
+			}
 		}
 		else
 		{
@@ -120,30 +99,68 @@ void SysTick_Handler(void){
 		}
 	}
 	
-	// Increment times
-	if(heartbeat_counter++ % 10 == 0)
-	// once hundreth seconds reaches a total of one second..
-		if(++hundreth_seconds_counter % 100 == 0)
-		{
-			//.. increment seconds counter and reset hundreth counter
-			hundreth_seconds_counter = 0;
-			if(++seconds_counter % 60 == 0)
-			{
-				seconds_counter = 0;
-				if(++minutes_counter % 60 == 0)
-				{
-					minutes_counter = 0;
-					if( (++hours_counter-1) % 12 == 0)
-					{
-						hours_counter = 1;
-						if(hours_counter % 12)
-							ante_meridiem = !ante_meridiem;
-					} // end if(++hours...
-				} // end if(++minutes...
-			} // end if(++seconds...
-		} // end if(++ tenth_seconds...
-
 }
+
+
+void SysTick_Handler(void){
+	
+	
+	// Scan the keypad for keypresses every 100 millisec
+	// note: reading key's are done in the main function
+	// with getKey()
+	if(heartbeat_counter % 100 == 0)
+	{
+		scanKeyPad();
+	}
+
+
+	// Toggle the light every half a second as well as
+	// check if the alarm time
+	// matches the current time
+	if(heartbeat_counter % 500 == 0)
+	{
+		GPIO_PORTF_DATA_R ^= 0x04;       // toggle PF2
+		if(alarm_set) // only check if alarm time == current time
+									// if the alarm has been set by the user
+		{
+			if(alarm_seconds_counter == seconds_counter &&
+				 alarm_minutes_counter == minutes_counter &&
+				 alarm_hours_counter == hours_counter &&
+				 alarm_ante_meridiem == ante_meridiem)
+			{
+				ring_alarm = true;
+			}
+		}
+		ringAlarm(); // ring the alarm if set
+		// note: ringing the alarm is done periodically in systickhandler
+		// for sake of generating the beep beep pause, beep beep
+		// pause alarm sound effect
+	
+		// Increment times
+		if(heartbeat_counter++ % 10 == 0)
+		// once hundreth seconds reaches a total of one second..
+			if(++hundreth_seconds_counter % 100 == 0)
+			{
+				//.. increment seconds counter and reset hundreth counter
+				hundreth_seconds_counter = 0;
+				if(++seconds_counter % 60 == 0)
+				{
+					seconds_counter = 0;
+					if(++minutes_counter % 60 == 0)
+					{
+						minutes_counter = 0;
+						if( (++hours_counter-1) % 12 == 0)
+						{
+							hours_counter = 1;
+							if(hours_counter % 12)
+								ante_meridiem = !ante_meridiem;
+						} // end if(++hours...
+					} // end if(++minutes...
+				} // end if(++seconds...
+			} // end if(++ tenth_seconds...
+		} // end if (heartbeat ..
+
+}		// end Systick_Handler()
 
 
 void SysTick_Init(unsigned long period){

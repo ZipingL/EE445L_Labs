@@ -15,12 +15,24 @@ char  s_PM[3] = {'P', 'M', 0};
 
 char* time_to_string(int8_t sec, int8_t min, int8_t hour, int8_t hundreth_sec, char* string);
 
+
+/** Takes the time values and prints them on the LCD: e.g. PM 12:32 59
+ ** Does not print out the specific time value specified by 'int place'
+ ** and instead prints out the character 'char edit' in its place.
+ ** Place value meanings:
+ ** place value: 0  |1|2|3|4|5|6|
+ ** time  value: PM |1|2:3|2|5|9|
+ **
+ ** used for covering up a time value to be edited when user wants to edit
+ ** the time with a different character instead specified by 'edit'
+ **/
 void draw_digital_time_edit( int8_t sec, int8_t min, int8_t hour, bool AM, int color, int place, char edit)
 {
-	int8_t hundreth_sec = -1;
+	int8_t hundreth_sec = -1; // unused
 	char string[12];
 	char * s_am_pm = AM == true ? s_AM : s_PM;
 	
+	// Draw the   
 	if(place == 0)
 	for(int i = 0; s_am_pm[i] != NULL; i++)
 	{
@@ -69,6 +81,10 @@ void draw_digital_time_edit( int8_t sec, int8_t min, int8_t hour, bool AM, int c
 }
 
 
+/** Draws the digital time e.g. PM 12:34 59
+ ** optionally, but not implemented there is a parameter to 
+ ** print out hundreths digits
+ **/
 void draw_digital_time_hundreth( int8_t sec, int8_t min, int8_t hour, int8_t hundreth_sec, bool AM, int color)
 {
 	char string[12];
@@ -93,6 +109,12 @@ void draw_digital_time_hundreth( int8_t sec, int8_t min, int8_t hour, int8_t hun
 	}
 }
 
+/** paints over the digital time value specified
+ ** by place with a black rectangle
+ ** therefore covering it up
+ ** place value: 0  |1|2|3|4|5|6|
+ ** time  value: PM |1|2:3|2|5|9|
+ **/
 void cover_digital_time(int8_t place)
 {
 	switch(place)
@@ -139,11 +161,16 @@ void cover_digital_time(int8_t place)
 	}
 }
 
+// Draws the digital time to LCD e.g. AM 12:23 59
 void draw_digital_time( int8_t sec, int8_t min, int8_t hour, bool AM , int color)
 {
 	draw_digital_time_hundreth(sec, min, hour, -1, AM, color);
 }
 
+/** Takes the integer values of seconds, minutes, hours, and hundreth_seconds
+ ** and converts it into a string, e.g. "12:3459" for 12 hours, 34 min, 59 sec.
+ ** requires a char* string array already preallocated
+ **/
 char* time_to_string(int8_t sec, int8_t min, int8_t hour, int8_t hundreth_sec, char* string) 
 {
 	string[0] = hour / 10 +48;

@@ -74,45 +74,55 @@ int main(void){
 	bool flip = false;
 
 	draw_digital_time(seconds_counter, minutes_counter, hours_counter, ante_meridiem, digital_color);
+	
+	// Loop infinitely for sake of updating the time on the LCD
 	while(true){
 		
-
+		// If alarm should be rung, set the digital time color to RED
 		if(ring_alarm == true)
 		{
-			
 			digital_color = ST7735_RED;
-			//PWM0_ENABLE_R |= 0x01;
 		}
 		else {
 			digital_color = ST7735_YELLOW;
 		}
 		
+		// Every 100 ms update the time on the LCD
 		if(heartbeat_counter % 100 == 0)
 		{
 				draw_digital_time(seconds_counter, minutes_counter, hours_counter, ante_meridiem, digital_color);
 		}
 
+		// retrieve a keypress from the key fifo
+		// will receive a 0 if there are no keypresses
 		char keypressed = getKey();
 		if( keypressed != 0 && lastkey != keypressed)
 		{
 			lastkey = keypressed;
-			ST7735_DrawChar(0,0,keypressed,ST7735_GREEN,ST7735_BLACK, 2); 
-			ST7735_DrawChar(12,0,lastkey,ST7735_GREEN,ST7735_BLACK, 2);
+			
+			// For debug purposes:
+			//ST7735_DrawChar(0,0,keypressed,ST7735_GREEN,ST7735_BLACK, 2); 
+			//ST7735_DrawChar(12,0,lastkey,ST7735_GREEN,ST7735_BLACK, 2);
+			
+			// Check if user wants to edit the current time or alarm
 			if(keypressed == '*' || keypressed == '#')
 			{
 				editClock(keypressed);
 			}
+			
+			// If the alarm is ringing, pressing 0
+			// results in the alarm to be turned off
 			else if(keypressed == '0')
 			{
 				DisableInterrupts();
 				ring_alarm = false;
-				//PWM0_ENABLE_R &= ~0x01;
 				EnableInterrupts();
 			}
 		}
 	}
 }
 
+// edit either the alarm or curren time
 void editClock(char keypressed){
 	
 	if(keypressed == '*')
@@ -136,6 +146,12 @@ void editAlarm(void) {
 	DelayWait10ms(1);
 	bool flip = false;
 	bool clock_value_entered = false;
+	
+	// Spin infinitely, for sake of
+	// blinking the time value the user is
+	// editing, and reading any keypresses
+	// as the user moves from time value to
+	// time value
 	while(true){
 		
 		if(counter++ % 500000 == 0)
@@ -155,6 +171,7 @@ void editAlarm(void) {
 
 		keypressed = getKey();
 		
+		// Disable the alarm if the user presses 99
 		if(lastkey == '9' && keypressed == '9')
 		{
 			
@@ -172,8 +189,11 @@ void editAlarm(void) {
 	*/
 		}
 		
+
 		if( keypressed != 0 && lastkey != keypressed)
 		{
+		// Move on to the next key to be edited
+		// if user presses *
 			if(keypressed == '*')
 			{
 				clock_value_entered = false;
@@ -182,7 +202,9 @@ void editAlarm(void) {
 			}
 			
 
-
+			// Exit the editing alarm mode
+			// if the user presses #, signifying
+			// that the user is finished editing
 			else if( keypressed == '#')
 			{
 				DisableInterrupts();
@@ -220,6 +242,12 @@ void editTime(void){
 	DelayWait10ms(1);
 	bool flip = false;
 	bool clock_value_entered = false;
+	
+		// Spin infinitely, for sake of
+	// blinking the time value the user is
+	// editing, and reading any keypresses
+	// as the user moves from time value to
+	// time value
 	while(true){
 		
 		if(counter++ % 500000 == 0)
@@ -240,12 +268,16 @@ void editTime(void){
 		keypressed = getKey();
 		if( keypressed != 0 && lastkey != keypressed)
 		{
+		// Move on to the next key to be edited
+		// if user presses *
 			if(keypressed == '*')
 			{
 				place++;		
 				clock_value_entered = false;
 			}
-
+			// Exit the editing alarm mode
+			// if the user presses #, signifying
+			// that the user is finished editing
 			else if( keypressed == '#')
 			{
 				DisableInterrupts();
@@ -257,6 +289,10 @@ void editTime(void){
 				return;
 			}
 			
+			// The user pressed a digit
+			// to edit the time with
+			// there for update the time
+			// accordingly
 			else
 			{
 				counters[place] = keypressed - 48;
@@ -268,6 +304,20 @@ void editTime(void){
 	}
 }
 
+// Inputs: sec, min, hr, AM, to store the updated time in
+// Inputs: counters[] holds the keypress char
+//         int8_t  place specifies in which place in the counters[] array
+//         that there is a character value
+//         int8_t place also determines the time value
+//         that is to be edited
+
+//         Ensures that user keypress input is valid
+//         e.g. you can't put 3 for the tens place when editing
+//         the hour
+
+//         place_value: 0  |1|2|3|4|5|6|
+//         time  value: PM |1|2:3|2|5|9|
+//         for example:
 bool updateEditedTime(int8_t* sec, int8_t * min, int8_t * hr, bool* AM, int8_t counters[], int8_t place)
 {
 			uint8_t temp = 0;

@@ -45,9 +45,6 @@ pin
 2 			<------> PD1 <--->10K Ohm<---> 3.3 VCC
 1 			<------> PD0 <--->10K Ohm<---> 3.3 VCC
 
-
-
-
 */
 
 #include <stdint.h>
@@ -61,11 +58,6 @@ pin
 #define PE3 0x08; //0b00001000 
 #define PE2 0x04; //0b00000100 
 #define PE1 0x02; //0b00000010
-
-#define FIFOSIZE   16         // size of the FIFOs (must be power of 2)
-#define FIFOSUCCESS 1         // return value on success
-#define FIFOFAIL    0         // return value on failure
-                              // create index implementation FIFO (see FIFO.h)
 
 void DisableInterrupts(void); // Disable interrupts
 void EnableInterrupts(void);  // Enable interrupts
@@ -81,40 +73,10 @@ char scanKeys(void);
 char scanKeysMethod2(int * num);
 
 char static lastKey;
-// Records the time and adc value every 1000 Hz
-void Timer0A_Handler(void){
-
-  TIMER0_ICR_R = TIMER_ICR_TATOCINT;    // acknowledge timer0A timeout
-
-}
-
-/*
-// This debug function initializes Timer0A to request interrupts
-// at a 1000 Hz frequency.  It is similar to FreqMeasure.c.
-void Timer0A_Init(void){
-	long sr = StartCritical();
-  volatile uint32_t delay;
-  // **** general initialization ****
-  SYSCTL_RCGCTIMER_R |= 0x01;      // activate timer0
-  delay = SYSCTL_RCGCTIMER_R;      // allow time to finish activating
-  TIMER0_CTL_R &= ~TIMER_CTL_TAEN; // disable timer0A during setup
-  TIMER0_CFG_R = 0;                // configure for 32-bit timer mode
-  // **** timer0A initialization ****
-                                   // configure for periodic mode
-  TIMER0_TAMR_R = TIMER_TAMR_TAMR_PERIOD;
-  TIMER0_TAILR_R = 25*80000;         // 25 ms polling
-  TIMER0_IMR_R |= TIMER_IMR_TATOIM;// enable timeout (rollover) interrupt
-  TIMER0_ICR_R = TIMER_ICR_TATOCINT;// clear timer0A timeout flag
-  TIMER0_CTL_R |= TIMER_CTL_TAEN;  // enable timer0A 32-b, periodic, interrupts
-  // **** interrupt initialization ****
-                                   // Timer0A=priority 2
-  NVIC_PRI4_R = (NVIC_PRI4_R&0x00FFFFFF)|0x40000000; // top 3 bits
-  NVIC_EN0_R = 1<<19;              // enable interrupt 19 in NVIC
-	EndCritical(sr);
-}*/
 
 // ***************** TIMER1_Init ****************
-// Activate TIMER1 interrupts to run user task periodically
+// Activate TIMER1 interrupts to run 
+//          periodic keypad scanning (not used)
 // Inputs:  task is a pointer to a user function
 //          period in units (1/clockfreq)
 // Outputs: none
@@ -141,6 +103,8 @@ void Timer1A_Handler(void){
 	scanKeyPad();
 }
 
+// Scan the keypad for any keypresses
+// and store it to the FIFO
 void scanKeyPad()
 {
 	int keypresses = 0;
@@ -155,7 +119,6 @@ void scanKeyPad()
 		lastKey = 0;
 	}
 }
-
 
 
 void DelayWait10ms(uint32_t n){uint32_t volatile time;
@@ -177,9 +140,9 @@ void initKeypad()
 					GPIO_PORTE_DATA_R &= ~0x1E;      // pin values high
 
   GPIO_PORTE_DEN_R |= 0x1E;        // enable digital I/O on PE1-4
-  GPIO_PORTE_DIR_R &= ~0x1E;       // make PE1-4 OUT (PE1-4 columns)
+  GPIO_PORTE_DIR_R &= ~0x1E;       // make PE1-4 IN (PE1-4 columns)
   GPIO_PORTE_PCTL_R = 0xFFF0000F;
-  GPIO_PORTE_AFSEL_R = 0;     // disable alternate functionality on PE
+  GPIO_PORTE_AFSEL_R = 0;     	// disable alternate functionality on PE
   GPIO_PORTE_AMSEL_R = 0;     // disable analog functionality on PE
  
   GPIO_PORTD_DEN_R |= 0x0F;        // enable digital I/O on PD3-0
@@ -187,36 +150,40 @@ void initKeypad()
   GPIO_PORTD_PCTL_R = 0xFFFF0000;
   GPIO_PORTD_AMSEL_R = 0;     // disable analog functionality on PD
   GPIO_PORTD_AFSEL_R = 0;     // disable alternate functionality on PD
-	//GPIO_PORTD_DATA_R &= ~0x0F;      // pin values LOW
+  //GPIO_PORTD_DATA_R &= ~0x0F;      // pin values LOW
 		
-	//Timer1_Init(25*80000);
+  //Timer1_Init(25*80000);
 		
 	
-	}
+  }
 
-// returns the columns scanned
-uint8_t scanColumns()
-{
-	
-
-	uint8_t column_data = GPIO_PORTD_DATA_R;
-	column_data &= 0x0F;
-	switch(column_data)
+	// returns the columns scanned
+	uint8_t scanColumns()
 	{
-		case 0x8: // 0b00001110
-			return 0x8;
-		case 0x4: // 0b00010110 
-			return 0x4;
-		case 0x2: // 0b00011010 
-			return 0x2;
-		case 0x1: // 0b00011100 
-			return 0x1;
+		uint8_t column_data = GPIO_PORTD_DATA_R;
+		column_data &= 0x0F;
+		switch(column_data)
+		{
+			case 0x8: 
+				return 0x8;
+			case 0x4: 
+				return 0x4;
+			case 0x2: 
+				return 0x2;
+			case 0x1: 
+				return 0x1;
+		}
+		return 0x80;
 	}
 
-
-	return 0x80;
-}
-
+	// Inputs: row_pressed represented by the pin value
+	//         column_pressed represented by the pin value
+	//         e.g. row_pressed = 0x02 would be pin PE2
+	//         e.g. column_pressed = 0x01 would be pin PD0
+	//         therefore representing keypress:'D'
+	//
+	// Outputs: The character based on the row column coordinates
+	// 
 char parseKey(uint8_t row_pressed, uint8_t column_pressed)
 {
 	switch(row_pressed)
@@ -276,21 +243,50 @@ char parseKey(uint8_t row_pressed, uint8_t column_pressed)
 }
 
 // based on Matrix.c
+// Inputs: num to store number of presses
+// Assumes that keypad has its columns
+// connected to pull up resistors
+// and 3.3 vcc.
+// therefore all the pins (PD0-3) 
+// connected to columns of keypad will read 1,
+// and, all the pins connected to the rows 
+// will read  0.
+// How a keypad works:
+// When a user presses a key
+// the column and row of that key
+// and instantly connected
+// therefore the column pin will read
+// 0 instead of its previous value 1
+// since the row pins are grounded
+// 
 char scanKeysMethod2(int* num)
 {
 	char key = 0;
- char column = 0;
+	char column = 0;
 	DisableInterrupts();
+	// Scan through each row for the key
 	for(int i = 0x02; i != 0x20; i <<=1)
 	{
+		// make a pin as OUT
 		GPIO_PORTE_DIR_R = i;
+		// output 0 to the pin,
+		// therefore grounding it
 		GPIO_PORTE_DATA_R &= ~0x1E;
-		for(int i = 0; i <=100; i++); // delay
+		// short delay, wait for signal to settle
+		for(int i = 0; i <=100; i++);
+		// read the column pins
 		column = GPIO_PORTD_DATA_R & 0x0F;
+		// in the case that there is one keypress
+		// one of the column pins should be
+		// 0, due to the connection made
+		// with the grounded row
+		// in the case that there is a keypress
 		for(int j = 1; j != 0x10; j <<= 1)
 		{
+			// if one of the column pins is 0...
 			if((column & j) == 0)
 			{
+				// ...then we found the keypress!
 				GPIO_PORTF_DATA_R ^= 0x04;
 				if(key == 0)
 				key = parseKey(i,j);
@@ -304,6 +300,7 @@ char scanKeysMethod2(int* num)
 }
 
 // Doesn't work nearly as well, doesn't require VCC to columns
+/*
 char scanKeys()
 {
 
@@ -342,7 +339,13 @@ char scanKeys()
 		return 0;
 	}
 }
+*/
 
+// Pop a key from the FIFO
+// Returns NULL if FIFO is empty
+// Can be modified with a while loop
+// to wait for user keypress 
+// but not needed for this lab
 char getKey()
 {
 	char letter = 0;
