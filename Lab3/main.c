@@ -69,15 +69,19 @@ int main(void){
 	Output_Init();
 	ClockTimerInit();
   initKeypad();
-	EnableInterrupts();
+  PWM0A_Init(40000, 30000);         // initialize PWM0, 1000 Hz, 75% duty	EnableInterrupts();
+	TIMER0_CTL_R &= ~0x00000001;
+	bool flip = false;
 
 	draw_digital_time(seconds_counter, minutes_counter, hours_counter, ante_meridiem, digital_color);
 	while(true){
 		
+
 		if(ring_alarm == true)
 		{
 			
 			digital_color = ST7735_RED;
+			//PWM0_ENABLE_R |= 0x01;
 		}
 		else {
 			digital_color = ST7735_YELLOW;
@@ -94,13 +98,16 @@ int main(void){
 			lastkey = keypressed;
 			ST7735_DrawChar(0,0,keypressed,ST7735_GREEN,ST7735_BLACK, 2); 
 			ST7735_DrawChar(12,0,lastkey,ST7735_GREEN,ST7735_BLACK, 2);
-			if(keypressed == 'A' || keypressed == 'C')
+			if(keypressed == '*' || keypressed == '#')
 			{
 				editClock(keypressed);
 			}
-			else if(keypressed == '#')
+			else if(keypressed == '0')
 			{
+				DisableInterrupts();
 				ring_alarm = false;
+				//PWM0_ENABLE_R &= ~0x01;
+				EnableInterrupts();
 			}
 		}
 	}
@@ -108,9 +115,9 @@ int main(void){
 
 void editClock(char keypressed){
 	
-	if(keypressed == 'A')
+	if(keypressed == '*')
 		editAlarm();
-	if(keypressed == 'C')
+	if(keypressed == '#')
 		editTime();
 	
 }
@@ -124,7 +131,7 @@ void editAlarm(void) {
 	int8_t counters[7] = {0};
 	
 	char keypressed = 0;
-	char lastkey = 'C';
+	char lastkey = '*';
 	int8_t place = 0;
 	DelayWait10ms(1);
 	bool flip = false;
@@ -147,24 +154,36 @@ void editAlarm(void) {
 		
 
 		keypressed = getKey();
+		
+		if(lastkey == '9' && keypressed == '9')
+		{
+			
+							DisableInterrupts();
+				alarm_set = false;
+				EnableInterrupts();
+				return;
+						/*
+			else if(keypressed == '*')
+			{ 
+				DisableInterrupts();
+				alarm_set = false;
+				EnableInterrupts();
+				return;
+	*/
+		}
+		
 		if( keypressed != 0 && lastkey != keypressed)
 		{
-			if(keypressed == 'C')
+			if(keypressed == '*')
 			{
 				clock_value_entered = false;
 				place++;		
 
 			}
 			
-			else if(keypressed == '*')
-			{
-				DisableInterrupts();
-				alarm_set = false;
-				EnableInterrupts();
-				return;
-			}
 
-			else if( keypressed == 'D')
+
+			else if( keypressed == '#')
 			{
 				DisableInterrupts();
 				alarm_set = true;
@@ -196,7 +215,7 @@ void editTime(void){
 	int8_t counters[7] = {0};
 	
 	char keypressed = 0;
-	char lastkey = 'C';
+	char lastkey = '#';
 	int8_t place = 0;
 	DelayWait10ms(1);
 	bool flip = false;
@@ -221,13 +240,13 @@ void editTime(void){
 		keypressed = getKey();
 		if( keypressed != 0 && lastkey != keypressed)
 		{
-			if(keypressed == 'C')
+			if(keypressed == '*')
 			{
 				place++;		
 				clock_value_entered = false;
 			}
 
-			else if( keypressed == 'D')
+			else if( keypressed == '#')
 			{
 				DisableInterrupts();
 				seconds_counter = seconds;

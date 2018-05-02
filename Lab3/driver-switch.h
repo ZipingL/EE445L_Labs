@@ -3,5 +3,6 @@
 
 char getKey(void);
 void initKeypad(void);
+void scanKeyPad(void);
 
 #endif

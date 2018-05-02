@@ -66,7 +66,12 @@ pin
 #define FIFOSUCCESS 1         // return value on success
 #define FIFOFAIL    0         // return value on failure
                               // create index implementation FIFO (see FIFO.h)
-															
+
+void DisableInterrupts(void); // Disable interrupts
+void EnableInterrupts(void);  // Enable interrupts
+long StartCritical (void);    // previous I bit, disable interrupts
+void EndCritical(long sr);    // restore I bit to previous value
+void WaitForInterrupt(void);  // low power mode
 															
 char Key_Fifo[4];
 uint8_t fifo_start = 0;
@@ -80,22 +85,14 @@ char static lastKey;
 void Timer0A_Handler(void){
 
   TIMER0_ICR_R = TIMER_ICR_TATOCINT;    // acknowledge timer0A timeout
-	int keypresses = 0;
-	char thisKey = scanKeysMethod2(&keypresses);
-	if(thisKey != lastKey && keypresses <= 1 )
-	{
-		Key_Fifo[fifo_end] = thisKey;
-		fifo_end = (++fifo_end) % 4;
-		lastKey = thisKey;
-	}
-	else{
-		lastKey = 0;
-	}
+
 }
 
+/*
 // This debug function initializes Timer0A to request interrupts
 // at a 1000 Hz frequency.  It is similar to FreqMeasure.c.
 void Timer0A_Init(void){
+	long sr = StartCritical();
   volatile uint32_t delay;
   // **** general initialization ****
   SYSCTL_RCGCTIMER_R |= 0x01;      // activate timer0
@@ -113,8 +110,53 @@ void Timer0A_Init(void){
                                    // Timer0A=priority 2
   NVIC_PRI4_R = (NVIC_PRI4_R&0x00FFFFFF)|0x40000000; // top 3 bits
   NVIC_EN0_R = 1<<19;              // enable interrupt 19 in NVIC
-	
+	EndCritical(sr);
+}*/
+
+// ***************** TIMER1_Init ****************
+// Activate TIMER1 interrupts to run user task periodically
+// Inputs:  task is a pointer to a user function
+//          period in units (1/clockfreq)
+// Outputs: none
+void Timer1_Init(uint32_t period){
+  SYSCTL_RCGCTIMER_R |= 0x02;   // 0) activate TIMER1
+  TIMER1_CTL_R = 0x00000000;    // 1) disable TIMER1A during setup
+  TIMER1_CFG_R = 0x00000000;    // 2) configure for 32-bit mode
+  TIMER1_TAMR_R = 0x00000002;   // 3) configure for periodic mode, default down-count settings
+  TIMER1_TAILR_R = period-1;    // 4) reload value
+  TIMER1_TAPR_R = 0;            // 5) bus clock resolution
+  TIMER1_ICR_R = 0x00000001;    // 6) clear TIMER1A timeout flag
+  TIMER1_IMR_R = 0x00000001;    // 7) arm timeout interrupt
+  NVIC_PRI5_R = (NVIC_PRI5_R&0xFFFF00FF)|0x00008000; // 8) priority 4
+// interrupts enabled in the main program after all devices initialized
+// vector number 37, interrupt number 21
+  NVIC_EN0_R = 1<<21;           // 9) enable IRQ 21 in NVIC
+  TIMER1_CTL_R = 0x00000001;    // 10) enable TIMER1A
 }
+
+void scanKeyPad(void);
+
+void Timer1A_Handler(void){
+  TIMER1_ICR_R = TIMER_ICR_TATOCINT;// acknowledge TIMER1A timeout
+	scanKeyPad();
+}
+
+void scanKeyPad()
+{
+	int keypresses = 0;
+	char thisKey = scanKeysMethod2(&keypresses);
+	if(thisKey != lastKey && keypresses <= 1 )
+	{
+		Key_Fifo[fifo_end] = thisKey;
+		fifo_end = (++fifo_end) % 4;
+		lastKey = thisKey;
+	}
+	else{
+		lastKey = 0;
+	}
+}
+
+
 
 void DelayWait10ms(uint32_t n){uint32_t volatile time;
   while(n){
@@ -128,10 +170,10 @@ void DelayWait10ms(uint32_t n){uint32_t volatile time;
 
 void initKeypad()
 {
-  //SYSCTL_RCGCGPIO_R |= 0x18;        // 1) activate clock for Port F
-  //while((SYSCTL_PRGPIO_R&0x18)==0){}; // allow time for clock to start
+  SYSCTL_RCGCGPIO_R |= 0x18;        // 1) activate clock for Port F
+  while((SYSCTL_PRGPIO_R&0x18)==0){}; // allow time for clock to start
   
-  SYSCTL_RCGCGPIO_R |= 0x18; //0b11000       // enable Ports E and D
+  //SYSCTL_RCGCGPIO_R |= 0x18; //0b11000       // enable Ports E and D
 					GPIO_PORTE_DATA_R &= ~0x1E;      // pin values high
 
   GPIO_PORTE_DEN_R |= 0x1E;        // enable digital I/O on PE1-4
@@ -147,7 +189,7 @@ void initKeypad()
   GPIO_PORTD_AFSEL_R = 0;     // disable alternate functionality on PD
 	//GPIO_PORTD_DATA_R &= ~0x0F;      // pin values LOW
 		
-	Timer0A_Init();
+	//Timer1_Init(25*80000);
 		
 	
 	}
@@ -238,6 +280,7 @@ char scanKeysMethod2(int* num)
 {
 	char key = 0;
  char column = 0;
+	DisableInterrupts();
 	for(int i = 0x02; i != 0x20; i <<=1)
 	{
 		GPIO_PORTE_DIR_R = i;
@@ -256,7 +299,7 @@ char scanKeysMethod2(int* num)
 		}
 	}
 	GPIO_PORTE_DIR_R &= ~0x1E;
-
+	EnableInterrupts();
 		return key;
 }
 

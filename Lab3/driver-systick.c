@@ -38,7 +38,7 @@
 #include <stdbool.h>
 #include "../inc/tm4c123gh6pm.h"
 #include "driver-systick.h"
-
+#include "driver-switch.h"
 #define NVIC_ST_CTRL_COUNT      0x00010000  // Count flag
 #define NVIC_ST_CTRL_CLK_SRC    0x00000004  // Clock Source
 #define NVIC_ST_CTRL_INTEN      0x00000002  // Interrupt enable
@@ -61,9 +61,15 @@ bool ring_alarm = false;
 
 uint32_t heartbeat_counter = 0;
 bool ante_meridiem = false;
-
-
+bool flip = false;
+bool flip2 = false;
 void SysTick_Handler(void){
+	
+	
+	if(heartbeat_counter % 100 == 0)
+	{
+		scanKeyPad();
+	}
 
 
 	// Heartbeat every second
@@ -81,6 +87,39 @@ void SysTick_Handler(void){
 		}
 		GPIO_PORTF_DATA_R ^= 0x04;       // toggle PF2
 	}
+		
+	if(heartbeat_counter % ( 600) == 0)
+	{
+		flip = !flip;
+	}
+	
+	if(heartbeat_counter % 100 == 0)
+	{
+		flip2 = !flip2;
+	}
+	
+	if(ring_alarm)
+	{
+		if(flip)
+		{
+							
+							if(flip2)
+							{
+									TIMER0_CTL_R |= 0x00000001; 
+							}
+							else
+							{
+									TIMER0_CTL_R &= ~0x00000001;
+							}
+		}
+		else
+		{
+			flip = false;
+			flip2 = false;
+			TIMER0_CTL_R &= ~0x00000001;
+		}
+	}
+	
 	// Increment times
 	if(heartbeat_counter++ % 10 == 0)
 	// once hundreth seconds reaches a total of one second..
