@@ -669,11 +669,11 @@ void draw_clock_markers(uint16_t color)
 	{
 		ST7735_Line(circle_x2[i], circle_y2[i], circle_x[i], circle_y[i], color);
 	}
-	
-		for(int i = 0; i < 60; i++)
+	/* optional minute dots
+	for(int i = 0; i < 60; i++)
 	{
-		ST7735_DrawPixel(circle_x[i], circle_y[i], ST7735_BLACK);
-	}
+		ST7735_DrawPixel(circle_x[i], circle_y[i], ST7735_WHITE);
+	} */
 }
 
 
