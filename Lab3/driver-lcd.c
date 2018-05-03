@@ -634,9 +634,9 @@ void draw_minute_hand(uint8_t min, uint16_t color, uint8_t divisor, uint8_t minu
 	ST7735_Line(center_x, center_y, x2, y2, color);
 	}
 	else {
-		min = 5*min;
+		min = 5*(min-1);
 		
-	uint8_t hour_offset = (((minute+1) * 5 ) / 60) < 1? 0 : (((minute+1) * 5 ) / 60)-1 ;
+	uint8_t hour_offset = (((minute) * 5 ) / 60);
 		
 
 		
@@ -647,8 +647,8 @@ void draw_minute_hand(uint8_t min, uint16_t color, uint8_t divisor, uint8_t minu
 	ST7735_Line(center_x, center_y, x2, y2, ST7735_BLACK);
 		
 		
- x2 = circle_x3[min+hour_offset];
- y2 = circle_y3[min+hour_offset];
+ x2 = circle_x3[min+(hour_offset)];
+ y2 = circle_y3[min+(hour_offset)];
 		
 	ST7735_Line(center_x, center_y, x2, y2, color);
 	}
@@ -668,6 +668,11 @@ void draw_clock_markers(uint16_t color)
 	for(int i = 0; i < 60; i = i + 5)
 	{
 		ST7735_Line(circle_x2[i], circle_y2[i], circle_x[i], circle_y[i], color);
+	}
+	
+		for(int i = 0; i < 60; i++)
+	{
+		ST7735_DrawPixel(circle_x[i], circle_y[i], ST7735_BLACK);
 	}
 }
 

@@ -48,14 +48,14 @@
 
 int8_t hundreth_seconds_counter = 10;
 int8_t seconds_counter = 30;
-int8_t minutes_counter = 25;
-int8_t hours_counter = 11;
+int8_t minutes_counter = 56;
+int8_t hours_counter = 12;
 
 
 int8_t alarm_seconds_counter = 0;
 int8_t alarm_minutes_counter = 0;
 int8_t alarm_hours_counter = 9;
-bool alarm_ante_meridiem = true;
+bool alarm_ante_meridiem = false;
 bool alarm_set = true;
 bool ring_alarm = false;
 
@@ -148,12 +148,14 @@ void SysTick_Handler(void){
 					if(++minutes_counter % 60 == 0)
 					{
 						minutes_counter = 0;
+
 						if( (++hours_counter-1) % 12 == 0)
 						{
 							hours_counter = 1;
-							if(hours_counter % 12)
-								ante_meridiem = !ante_meridiem;
 						} // end if(++hours...
+						
+					 if(hours_counter % 11 == 0)
+						   ante_meridiem = !ante_meridiem;
 					} // end if(++minutes...
 				} // end if(++seconds...
 			} // end if(++ HUNDRETH_seconds...
