@@ -48,15 +48,15 @@
 
 int8_t hundreth_seconds_counter = 10;
 int8_t seconds_counter = 30;
-int8_t minutes_counter = 4;
-int8_t hours_counter = 10;
+int8_t minutes_counter = 25;
+int8_t hours_counter = 11;
 
 
-int8_t alarm_seconds_counter;
-int8_t alarm_minutes_counter;
-int8_t alarm_hours_counter;
-bool alarm_ante_meridiem;
-bool alarm_set = false;
+int8_t alarm_seconds_counter = 0;
+int8_t alarm_minutes_counter = 0;
+int8_t alarm_hours_counter = 9;
+bool alarm_ante_meridiem = true;
+bool alarm_set = true;
 bool ring_alarm = false;
 
 uint32_t heartbeat_counter = 0;
@@ -104,6 +104,8 @@ void ringAlarm() {
 
 void SysTick_Handler(void){
 	
+
+	ringAlarm();
 	
 	// Scan the keypad for keypresses every 100 millisec
 	// note: reading key's are done in the main function
@@ -131,10 +133,7 @@ void SysTick_Handler(void){
 				ring_alarm = true;
 			}
 		}
-		ringAlarm(); // ring the alarm if set
-		// note: ringing the alarm is done periodically in systickhandler
-		// for sake of generating the beep beep pause, beep beep
-		// pause alarm sound effect
+	}
 	
 		// Increment times
 		if(heartbeat_counter++ % 10 == 0)
@@ -157,10 +156,9 @@ void SysTick_Handler(void){
 						} // end if(++hours...
 					} // end if(++minutes...
 				} // end if(++seconds...
-			} // end if(++ tenth_seconds...
-		} // end if (heartbeat ..
+			} // end if(++ HUNDRETH_seconds...
+		}
 
-}		// end Systick_Handler()
 
 
 void SysTick_Init(unsigned long period){

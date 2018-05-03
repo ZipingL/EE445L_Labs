@@ -92,7 +92,7 @@
 #include <stdint.h>
 #include "ST7735.h"
 #include "../inc/tm4c123gh6pm.h"
-
+#include "stdlib.h"
 // 16 rows (0 to 15) and 21 characters (0 to 20)
 // Requires (11 + size*size*6*8) bytes of transmission for each character
 uint32_t StX=0; // position along the horizonal axis 0 to 20
@@ -939,30 +939,19 @@ void ST7735_DrawFastHLine(int16_t x, int16_t y, int16_t w, uint16_t color) {
 // Output: none
 void ST7735_Line(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, 
                  uint16_t color) {
-		if(x1 > 127 || x2 > 127 || y1 > 159 || y2 > 159)
-				return;
-		
-		int diffX = x2 - x1;
-		int diffY = y2 - y1;
-		int gcd = 0;
-		for(int i=1; i <= diffX && i <= diffY; ++i)
-    {
-        // Checks if i is factor of both integers
-        if(diffX%i==0 && diffY%i==0)
-            gcd = i;
-    }
-		if(gcd != 0)
-		{
-		diffX /= gcd;
-		diffY /= gcd;
-		}
-		
-		while(x1 != x2 && y1 != y2)
-		{
-		  ST7735_DrawPixel(x1 , y2, color);
-			x1 += diffX;
-			y1 += diffY;
-		}
+									 
+									 
+  int dx = abs(x2-x1), sx = x1<x2 ? 1 : -1;
+  int dy = abs(y2-y1), sy = y1<y2 ? 1 : -1; 
+  int err = (dx>dy ? dx : -dy)/2, e2;
+ 
+  for(;;){
+    ST7735_DrawPixel(x1,y1, color);
+    if (x1==x2 && y1==y2) break;
+    e2 = err;
+    if (e2 >-dx) { err -= dy; x1 += sx; }
+    if (e2 < dy) { err += dx; y1 += sy; }
+  }
 }
 
 

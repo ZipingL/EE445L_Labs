@@ -80,6 +80,7 @@ char static lastKey;
 // Inputs:  task is a pointer to a user function
 //          period in units (1/clockfreq)
 // Outputs: none
+/*
 void Timer1_Init(uint32_t period){
   SYSCTL_RCGCTIMER_R |= 0x02;   // 0) activate TIMER1
   TIMER1_CTL_R = 0x00000000;    // 1) disable TIMER1A during setup
@@ -94,14 +95,15 @@ void Timer1_Init(uint32_t period){
 // vector number 37, interrupt number 21
   NVIC_EN0_R = 1<<21;           // 9) enable IRQ 21 in NVIC
   TIMER1_CTL_R = 0x00000001;    // 10) enable TIMER1A
-}
+}*/
 
 void scanKeyPad(void);
 
+/*
 void Timer1A_Handler(void){
   TIMER1_ICR_R = TIMER_ICR_TATOCINT;// acknowledge TIMER1A timeout
 	scanKeyPad();
-}
+}*/
 
 // Scan the keypad for any keypresses
 // and store it to the FIFO
@@ -119,7 +121,7 @@ void scanKeyPad()
 		lastKey = 0;
 	}
 }
-
+/*
 
 void DelayWait10ms(uint32_t n){uint32_t volatile time;
   while(n){
@@ -129,7 +131,7 @@ void DelayWait10ms(uint32_t n){uint32_t volatile time;
     }
     n--;
   }
-}
+} */
 
 void initKeypad()
 {

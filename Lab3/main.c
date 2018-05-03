@@ -46,7 +46,6 @@ The clock must be able to perform five functions.
 #include "driver-systick.h"
 #include "stdbool.h"
 
-void DelayWait10ms(uint32_t n);
 void PortF_Init(void);
 #define PF2   (*((volatile uint32_t *)0x40025010))
 void EnableInterrupts(void);
@@ -55,6 +54,16 @@ void editClock(char keypressed);
 void editTime(void);
 void editAlarm(void);
 bool updateEditedTime(int8_t* sec, int8_t * min, int8_t * hr, bool* AM, int8_t counters[], int8_t place);
+
+void DelayWait10ms(uint32_t n){uint32_t volatile time;
+  while(n){
+    time = 727240*2/91;  // 10msec
+    while(time){
+      time--;
+    }
+    n--;
+  }
+}
 
 char lastkey = 0;
 		int digital_color = ST7735_YELLOW;
@@ -71,7 +80,6 @@ int main(void){
   initKeypad();
   PWM0A_Init(40000, 30000);         // initialize PWM0, 1000 Hz, 75% duty	EnableInterrupts();
 	TIMER0_CTL_R &= ~0x00000001;
-	bool flip = false;
 
 	draw_digital_time(seconds_counter, minutes_counter, hours_counter, ante_meridiem, digital_color);
 	
@@ -88,8 +96,17 @@ int main(void){
 		}
 		
 		// Every 100 ms update the time on the LCD
-		if(heartbeat_counter % 100 == 0)
+		if(heartbeat_counter % 1000 == 0)
 		{
+				//draw_clock_face();
+				draw_minute_hand( seconds_counter == 0 ?59 : seconds_counter -1, ST7735_BLACK, 60, minutes_counter);
+				draw_minute_hand( minutes_counter == 0 ?59 : minutes_counter -1, ST7735_BLACK, 60, minutes_counter);
+				draw_minute_hand( hours_counter - 1, ST7735_BLACK, 12, minutes_counter);
+				//draw_clock_face();
+				draw_minute_hand(seconds_counter, ST7735_WHITE, 60, minutes_counter);
+				draw_minute_hand(minutes_counter, ST7735_WHITE, 60, minutes_counter);
+				draw_minute_hand(hours_counter, ST7735_WHITE, 12, minutes_counter);
+				draw_clock_markers(ST7735_WHITE );
 				draw_digital_time(seconds_counter, minutes_counter, hours_counter, ante_meridiem, digital_color);
 		}
 
