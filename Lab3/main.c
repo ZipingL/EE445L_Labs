@@ -125,6 +125,7 @@ int main(void){
 			if(keypressed == '*' || keypressed == '#')
 			{
 				editClock(keypressed);
+				Output_Clear();
 			}
 			
 			// If the alarm is ringing, pressing 0
