@@ -89,7 +89,7 @@ Port A, SSI0 (PA2, PA3, PA5, PA6, PA7) sends data to Nokia5110 LCD
 #include "driverlib/pin_map.h"
 #include "driverlib/rom.h"
 #include "driverlib/sysctl.h"
-#include "driverlib/uart.h"
+//#include "driverlib/uart.h"
 #include "utils/uartstdio.h"
 #include "utils/cmdline.h"
 #include "application_commands.h"
@@ -97,11 +97,14 @@ Port A, SSI0 (PA2, PA3, PA5, PA6, PA7) sends data to Nokia5110 LCD
 #include "Nokia5110.h"
 #include <string.h>
 #include <stdbool.h>
+#include <stdlib.h>
 #include "ST7735.h"
 #include <stdio.h>
 #include <ctype.h>
 #include "ADCSWTrigger.h"
 #include "Timer1.h"
+#include "driver-systick.h"
+
 #define SEC_TYPE   SL_SEC_TYPE_OPEN
 #define SSID_NAME  "LiuNetwork-Guest"
 #define PASSKEY    ""
@@ -120,7 +123,6 @@ void UART_Init(void){
 #define MAX_HOSTNAME_SIZE   40
 #define MAX_PASSKEY_SIZE    32
 #define MAX_SSID_SIZE       32
-
 
 #define SUCCESS             0
 
@@ -216,11 +218,13 @@ void Crash(uint32_t time){
 char Temp[256];
 char Tempmin[256];
 char Tempmax[256];
+char Temptime[256];
 char Weather[256];
 char temp[] = "\"temp\":";
 char tempmin[] = "\"temp_min\":";
 char tempmax[] = "\"temp_max\":";
 char weather[] = "\"weather\":";
+char temptime[] = "GMT";
 char Name[256];
 char name[] = "\"name\":";
 char InternalTemp[256];
@@ -230,6 +234,23 @@ uint32_t time_inttemp[20] = {0};
 uint32_t count = 0;
 
 char StatusCheck[] = "HTTP/1.1 200 OK";
+
+void EnableInterrupts(void);
+void DisableInterrupts(void);
+
+// PF4 is input
+// Make PF2 an output, enable digital I/O, ensure alt. functions off
+void PortF_Init(void){ 
+  SYSCTL_RCGCGPIO_R |= 0x20;        // 1) activate clock for Port F
+  while((SYSCTL_PRGPIO_R&0x20)==0){}; // allow time for clock to start
+                                    // 2) no need to unlock PF2, PF4
+  GPIO_PORTF_PCTL_R &= ~0x000F0F00; // 3) regular GPIO
+  GPIO_PORTF_AMSEL_R &= ~0x14;      // 4) disable analog function on PF2, PF4
+  GPIO_PORTF_PUR_R |= 0x10;         // 5) pullup for PF4
+  GPIO_PORTF_DIR_R |= 0x04;         // 5) set direction to output
+  GPIO_PORTF_AFSEL_R &= ~0x14;      // 6) regular port function
+  GPIO_PORTF_DEN_R |= 0x14;         // 7) enable digital port
+}
 
 bool retrieveWebData(char* host_name, char* request)
 {
@@ -298,14 +319,14 @@ void DrawWeatherData()
 {
 	printf("City: %s\n", Name);
 	printf("Temp    : %s F\n", Temp);
-	printf("Temp Min: %s F\n", Tempmin);
-	printf("Temp Max: %s F\n", Tempmax);
+	//printf("Temp Min: %s F\n", Tempmin);
+	//printf("Temp Max: %s F\n", Tempmax);
 }
 
 bool Retrieve_WeatherData()
 {
 	
-	uint32_t data_index = 0;
+	int32_t data_index = 0;
 	uint32_t size = 0;
 	uint8_t success = 0;
 
@@ -361,11 +382,33 @@ bool Retrieve_WeatherData()
 		}
 
 	
+		ptr = NULL;
+		ptr = strstr(Recvbuff, temptime);
 
+		if(ptr != 0)
+		{
+			data_index = -9 ;
+			string_copy(Temptime, ptr+data_index, 0, 8);
+			success++;
+			
+
+		}
 	
 	return success == 5 ? true: false;
 }
 
+void timeStrToInt( int8_t * hour, int8_t * minute, int8_t *second, char* str)
+{
+	for(int i = 0; i < 8; i++)
+	{
+		if(str[i] == ':')
+			str[i] = NULL;
+	}
+
+		*hour = atoi(str);
+		*minute = atoi(str+2);
+	  *second = atoi(str+4);
+}
 
 
 
@@ -380,13 +423,16 @@ bool Retrieve_WeatherData()
 int main(void){int32_t retVal;  SlSecParams_t secParams;
   char *pConfig = NULL; 
 	char inttemp[6];
+	
   initClk();        // PLL 50 MHz
-  UART_Init();      // Send data to PC, 115200 bps
+  //UART_Init();      // Send data to PC, 115200 bps
   LED_Init();       // initialize LaunchPad I/O 
 	Output_Init();
-	ADC0_InitSWTriggerSeq3_Ch9();
+		//PortF_Init();
+	//ADC0_InitSWTriggerSeq3_Ch9();
 	Timer1_Init();
-  UARTprintf("Weather App\n");
+
+  //UARTprintf("Weather App\n");
   retVal = configureSimpleLinkToDefaultState(pConfig); // set policies
   if(retVal < 0)Crash(4000000);
   retVal = sl_Start(0, pConfig, 0);
@@ -398,12 +444,15 @@ int main(void){int32_t retVal;  SlSecParams_t secParams;
   while((0 == (g_Status&CONNECTED)) || (0 == (g_Status&IP_AQUIRED))){
     _SlNonOsMainLoopTask();
   }
-  UARTprintf("Connected\n");
+  //UARTprintf("Connected\n");
 	printf("SSID: %s", SSID_NAME); 
+			ClockTimerInit();
+
   while(1){
    // strcpy(HostName,"openweathermap.org");  // used to work 10/2015
     //strcpy(HostName,"api.openweathermap.org"); // works 9/2016
-			
+			  NVIC_ST_CTRL_R = 0x00; // enable SysTick with core clock and interrupts
+
 			double running_avg = 0;
 			uint32_t time = TIMER1_TAR_R;
 			retrieveWebData("api.openweathermap.org", REQUEST);
@@ -416,19 +465,21 @@ int main(void){int32_t retVal;  SlSecParams_t secParams;
 			}
 			if(count != 0)
 			running_avg /= count;
-			printf("Time Weather: %d ms\n ", count == 0? (int) time_weather[count] : (int) running_avg);
+			//printf("Time Weather: %d ms\n ", count == 0? (int) time_weather[count] : (int) running_avg);
 			bool success = Retrieve_WeatherData();
 			DrawWeatherData();
-			uint32_t voltage_temp = ADC0_InSeq3();
-		  double internal_temp = voltToTemp(voltage_temp);
-			ST7735_SetCursor(0,4);
-			internal_temp = internal_temp * (9.0 / 5.0) + 32.0;
-			printf("Intern Temp: %.2f F\n", internal_temp);
-			sprintf(inttemp,"%.2fn", internal_temp);
-			for(int i = IntTempIndex; i < 5+IntTempIndex; i++)
-				REQUEST2[i] = inttemp[i-IntTempIndex];
+			//uint32_t voltage_temp = ADC0_InSeq3();
+		 // double internal_temp = voltToTemp(voltage_temp);
+		//	ST7735_SetCursor(0,4);
+		//	internal_temp = internal_temp * (9.0 / 5.0) + 32.0;
+			//printf("Intern Temp: %.2f F\n", internal_temp);
+			//sprintf(inttemp,"%.2fn", internal_temp);
+			//for(int i = IntTempIndex; i < 5+IntTempIndex; i++)
+		//		REQUEST2[i] = inttemp[i-IntTempIndex];
 			time = TIMER1_TAR_R;
+
 			retrieveWebData(SERVER2, REQUEST2); 
+
 			time2 = TIMER1_TAR_R;
 			time_inttemp[count] = (((double) (time-time2)*1000)/ 50000000.0);
 			time = time_inttemp[count];
@@ -438,10 +489,10 @@ int main(void){int32_t retVal;  SlSecParams_t secParams;
 			}
 			if(count != 0)
 			running_avg /= count;
-			printf("Time IntTemp: %d ms\n ", count == 0? (int) time_inttemp[count] : (int) running_avg);
+			//printf("Time IntTemp: %d ms\n ", count == 0? (int) time_inttemp[count] : (int) running_avg);
 			count++;
-			printf("Count = %d", count);
-			
+			//printf("Count = %d", count);
+			timeStrToInt(&hours_counter, &minutes_counter, &seconds_counter, Temptime);
 		if(count == 20)
 		{
 			for(int i = 0; i < count; i++)
@@ -451,6 +502,9 @@ int main(void){int32_t retVal;  SlSecParams_t secParams;
 			}
 			count = 0;
 		}
+		
+  NVIC_ST_CTRL_R = 0x07; // enable SysTick with core clock and interrupts
+
     while(Board_Input()==0){}; // wait for touch
 		ST7735_SetCursor(0,0);
     LED_GreenOff();

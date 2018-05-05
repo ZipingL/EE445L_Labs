@@ -500,6 +500,31 @@
               <FileType>1</FileType>
               <FilePath>..\utils\ustdlib.c</FilePath>
             </File>
+            <File>
+              <FileName>ST7735.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\ST7735.c</FilePath>
+            </File>
+            <File>
+              <FileName>ADCSWTrigger.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\ADCSWTrigger.c</FilePath>
+            </File>
+            <File>
+              <FileName>Timer1.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\Timer1.c</FilePath>
+            </File>
+            <File>
+              <FileName>driver-lcd.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\driver-lcd.c</FilePath>
+            </File>
+            <File>
+              <FileName>driver-systick.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\driver-systick.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>

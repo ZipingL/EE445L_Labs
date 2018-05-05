@@ -228,6 +228,30 @@ __Vectors
         DCD     IntDefaultHandler           ; PWM 1 Generator 2
         DCD     IntDefaultHandler           ; PWM 1 Generator 3
         DCD     IntDefaultHandler           ; PWM 1 Fault
+			
+;******************************************************************************
+;
+; Useful functions.
+;
+;******************************************************************************
+        EXPORT  DisableInterrupts
+        EXPORT  EnableInterrupts
+
+;*********** DisableInterrupts ***************
+; disable interrupts
+; inputs:  none
+; outputs: none
+DisableInterrupts
+        CPSID  I
+        BX     LR
+
+;*********** EnableInterrupts ***************
+; disable interrupts
+; inputs:  none
+; outputs: none
+EnableInterrupts
+        CPSIE  I
+        BX     LR
 
 ;******************************************************************************
 ;
