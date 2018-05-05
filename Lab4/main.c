@@ -79,6 +79,8 @@ Port A, SSI0 (PA2, PA3, PA5, PA6, PA7) sends data to Nokia5110 LCD
 
 */
 #include "..\cc3100\simplelink\include\simplelink.h"
+#include "../inc/tm4c123gh6pm.h"
+
 #include "inc/hw_memmap.h"
 #include "inc/hw_types.h"
 #include "driverlib/debug.h"
@@ -98,6 +100,8 @@ Port A, SSI0 (PA2, PA3, PA5, PA6, PA7) sends data to Nokia5110 LCD
 #include "ST7735.h"
 #include <stdio.h>
 #include <ctype.h>
+#include "ADCSWTrigger.h"
+#include "Timer1.h"
 #define SEC_TYPE   SL_SEC_TYPE_OPEN
 #define SSID_NAME  "LiuNetwork-Guest"
 #define PASSKEY    ""
@@ -145,7 +149,6 @@ typedef enum{
 
 }e_StatusBits;
 
-
 #define SET_STATUS_BIT(status_variable, bit)    status_variable |= (1<<(bit))
 #define CLR_STATUS_BIT(status_variable, bit)    status_variable &= ~(1<<(bit))
 #define GET_STATUS_BIT(status_variable, bit)    (0 != (status_variable & (1<<(bit))))
@@ -153,7 +156,6 @@ typedef enum{
                                                                STATUS_BIT_CONNECTION)
 #define IS_IP_AQUIRED(status_variable)          GET_STATUS_BIT(status_variable, \
                                                                STATUS_BIT_IP_AQUIRED)
-
 typedef struct{
     UINT8 SSID[MAX_SSID_SIZE];
     INT32 encryption;
@@ -169,8 +171,15 @@ char SendBuff[MAX_SEND_BUFF_SIZE];
 char HostName[MAX_HOSTNAME_SIZE];
 unsigned long DestinationIP;
 int SockID;
+char REQUEST[] = "GET /data/2.5/weather?q=Lake%20Jackson%2CTexas&APPID=1bc54f645c5f1c75e681c102ed4bbca4&units=imperial HTTP/1.1\r\nUser-Agent: Keil\r\nHost:api.openweathermap.org\r\nAccept: */*\r\n\r\n";
 
+char SERVER2[] =  "ee445l-zl3858.appspot.com";
 
+#define IntTempIndex 68
+char REQUEST2[] = "GET /query?city=Lake%20Jackson%2CTexas&id=Ziping&greet=Int%20Temp%3D00000F HTTP/1.1\r\nUser-Agent: Keil\r\nHost: ee445l-zl3858.appspot.com\r\n\r\n";
+char REQUEST3[] = "GET /query?city=Austin%2C%20Texas&id=Jason%27s%20LaunchPad&greet=hello HTTP/1.1\r\nUser-Agent: Keil\r\nHost: ee445l-zl3858.appspot.com\r\n\r\n";
+char REQUEST4[] = "GET /query?city=Austin%20Texas&id=Jonathan&greet=Int%20Temp%3D21C&edxcode=8086 HTTP/1.1\r\nUser-Agent: Keil\r\nHost: embedded-systems-server.appspot.com\r\n\r\n";
+char SERVER4[] =  "embedded-systems-server.appspot.com";
 typedef enum{
     CONNECTED = 0x01,
     IP_AQUIRED = 0x02,
@@ -214,15 +223,64 @@ char tempmax[] = "\"temp_max\":";
 char weather[] = "\"weather\":";
 char Name[256];
 char name[] = "\"name\":";
+char InternalTemp[256];
+
+uint32_t time_weather[20] = {0};
+uint32_t time_inttemp[20] = {0};
+uint32_t count = 0;
 
 char StatusCheck[] = "HTTP/1.1 200 OK";
-/*
-void ADC0_Init(uint32_t period) {
-	volatile uint32_t delay;
-	SYSCTL_RCGCADC_R |= 0x01;
-	SYSCTL_
+
+bool retrieveWebData(char* host_name, char* request)
+{
+DestinationIP = 0;
+ SockID = 0;
+
+for(int i = 0; i < MAX_RECV_BUFF_SIZE; i ++)
+	{
+		Recvbuff[i] = 0;
+		HostName[i % MAX_HOSTNAME_SIZE] = 0;
+		SendBuff[i % MAX_SEND_BUFF_SIZE] = 0;
+	}
 	
-}*/
+SlSockAddrIn_t  Addr;
+	bool success = false;
+		int32_t retVal;
+	INT32 ASize = 0; 
+		strcpy(HostName, host_name);
+    retVal = sl_NetAppDnsGetHostByName(HostName,
+             strlen(HostName),&DestinationIP, SL_AF_INET);
+    if(retVal == 0){
+      Addr.sin_family = SL_AF_INET;
+      Addr.sin_port = sl_Htons(80);
+      Addr.sin_addr.s_addr = sl_Htonl(DestinationIP);// IP to big endian 
+      ASize = sizeof(SlSockAddrIn_t);
+      SockID = sl_Socket(SL_AF_INET,SL_SOCK_STREAM, 0);
+      if( SockID >= 0 ){
+        retVal = sl_Connect(SockID, ( SlSockAddr_t *)&Addr, ASize);
+      }
+      if((SockID >= 0)&&(retVal >= 0)){
+        strcpy(SendBuff,request); 
+        sl_Send(SockID, SendBuff, strlen(SendBuff), 0);// Send the HTTP GET 
+        sl_Recv(SockID, Recvbuff, MAX_RECV_BUFF_SIZE, 0);// Receive response 
+        sl_Close(SockID);
+        LED_GreenOn();
+        UARTprintf("\r\n\r\n");
+        UARTprintf(Recvbuff);  UARTprintf("\r\n");
+				
+				success = true;
+				}
+			
+
+    }
+	return success;
+	}
+
+	
+double voltToTemp(uint32_t volt) {
+	double TEMP = 147.5 - ((75.0 * (3.3) * volt) / 4096.0);
+	return TEMP;
+}
 
 void string_copy(char* dest, char* src, int start, int size)
 {
@@ -233,30 +291,22 @@ void string_copy(char* dest, char* src, int start, int size)
 		dest[i] = src[i+start];
 
 	}
-	//dest[i+1] = NULL;
-	
-	for(int i = 0; i < size; i++)
-	{
-		if(!isalpha(dest[i]) && !isdigit(dest[i]) && !dest[i] == '.')
-			dest[i] = NULL;
-	}
+	dest[size] = NULL;
 }
 
 void DrawWeatherData()
 {
-	ST7735_DrawString(0, 0, Name, ST7735_YELLOW);
-	ST7735_DrawString(0, 1,   "Temp:     ", ST7735_YELLOW);
-	ST7735_DrawString(strlen( "Temp:     "), 1, Temp, ST7735_YELLOW);
-		ST7735_DrawString(0, 2, "Temp Min: ", ST7735_YELLOW);
-	ST7735_DrawString(strlen( "Temp Min: "), 2, Tempmin, ST7735_YELLOW);
-		ST7735_DrawString(0, 3, "Temp Max: ", ST7735_YELLOW);
-	ST7735_DrawString(strlen( "Temp Max: "), 3, Tempmax, ST7735_YELLOW);
+	printf("City: %s\n", Name);
+	printf("Temp    : %s F\n", Temp);
+	printf("Temp Min: %s F\n", Tempmin);
+	printf("Temp Max: %s F\n", Tempmax);
 }
 
 bool Retrieve_WeatherData()
 {
 	
 	uint32_t data_index = 0;
+	uint32_t size = 0;
 	uint8_t success = 0;
 
 	char* ptr = NULL;
@@ -264,6 +314,7 @@ bool Retrieve_WeatherData()
 		if(ptr != 0)
 		{
 			data_index = strlen(temp);
+		
 			string_copy(Temp, ptr+data_index, 0, 4);
 			success++;
 		}
@@ -316,21 +367,25 @@ bool Retrieve_WeatherData()
 }
 
 
+
+
 /*
  * Application's entry point
  */
 // 1) change Austin Texas to your city
 // 2) you can change metric to imperial if you want temperature in F
-#define REQUEST "GET /data/2.5/weather?q=Lake%20Jackson%2CTexas&APPID=1bc54f645c5f1c75e681c102ed4bbca4&units=imperial HTTP/1.1\r\nUser-Agent: Keil\r\nHost:api.openweathermap.org\r\nAccept: */*\r\n\r\n"
 // 1) go to http://openweathermap.org/appid#use 
 // 2) Register on the Sign up page
 // 3) get an API key (APPID) replace the 1234567890abcdef1234567890abcdef with your APPID
 int main(void){int32_t retVal;  SlSecParams_t secParams;
-  char *pConfig = NULL; INT32 ASize = 0; SlSockAddrIn_t  Addr;
+  char *pConfig = NULL; 
+	char inttemp[6];
   initClk();        // PLL 50 MHz
   UART_Init();      // Send data to PC, 115200 bps
   LED_Init();       // initialize LaunchPad I/O 
 	Output_Init();
+	ADC0_InitSWTriggerSeq3_Ch9();
+	Timer1_Init();
   UARTprintf("Weather App\n");
   retVal = configureSimpleLinkToDefaultState(pConfig); // set policies
   if(retVal < 0)Crash(4000000);
@@ -344,34 +399,60 @@ int main(void){int32_t retVal;  SlSecParams_t secParams;
     _SlNonOsMainLoopTask();
   }
   UARTprintf("Connected\n");
+	printf("SSID: %s", SSID_NAME); 
   while(1){
    // strcpy(HostName,"openweathermap.org");  // used to work 10/2015
-    strcpy(HostName,"api.openweathermap.org"); // works 9/2016
-    retVal = sl_NetAppDnsGetHostByName(HostName,
-             strlen(HostName),&DestinationIP, SL_AF_INET);
-    if(retVal == 0){
-      Addr.sin_family = SL_AF_INET;
-      Addr.sin_port = sl_Htons(80);
-      Addr.sin_addr.s_addr = sl_Htonl(DestinationIP);// IP to big endian 
-      ASize = sizeof(SlSockAddrIn_t);
-      SockID = sl_Socket(SL_AF_INET,SL_SOCK_STREAM, 0);
-      if( SockID >= 0 ){
-        retVal = sl_Connect(SockID, ( SlSockAddr_t *)&Addr, ASize);
-      }
-      if((SockID >= 0)&&(retVal >= 0)){
-        strcpy(SendBuff,REQUEST); 
-        sl_Send(SockID, SendBuff, strlen(SendBuff), 0);// Send the HTTP GET 
-        sl_Recv(SockID, Recvbuff, MAX_RECV_BUFF_SIZE, 0);// Receive response 
-        sl_Close(SockID);
-        LED_GreenOn();
-        UARTprintf("\r\n\r\n");
-        UARTprintf(Recvbuff);  UARTprintf("\r\n");
-      }
+    //strcpy(HostName,"api.openweathermap.org"); // works 9/2016
 			
+			double running_avg = 0;
+			uint32_t time = TIMER1_TAR_R;
+			retrieveWebData("api.openweathermap.org", REQUEST);
+			uint32_t time2 = TIMER1_TAR_R;;
+			time_weather[count] = (((double) (time-time2)*1000)/ 50000000.0);
+
+			for(int i = 0; i < count; i++)
+			{
+				running_avg += time_weather[i];
+			}
+			if(count != 0)
+			running_avg /= count;
+			printf("Time Weather: %d ms\n ", count == 0? (int) time_weather[count] : (int) running_avg);
 			bool success = Retrieve_WeatherData();
 			DrawWeatherData();
-    }
+			uint32_t voltage_temp = ADC0_InSeq3();
+		  double internal_temp = voltToTemp(voltage_temp);
+			ST7735_SetCursor(0,4);
+			internal_temp = internal_temp * (9.0 / 5.0) + 32.0;
+			printf("Intern Temp: %.2f F\n", internal_temp);
+			sprintf(inttemp,"%.2fn", internal_temp);
+			for(int i = IntTempIndex; i < 5+IntTempIndex; i++)
+				REQUEST2[i] = inttemp[i-IntTempIndex];
+			time = TIMER1_TAR_R;
+			retrieveWebData(SERVER2, REQUEST2); 
+			time2 = TIMER1_TAR_R;
+			time_inttemp[count] = (((double) (time-time2)*1000)/ 50000000.0);
+			time = time_inttemp[count];
+			for(int i = 0; i < count; i++)
+			{
+				running_avg += time_inttemp[i];
+			}
+			if(count != 0)
+			running_avg /= count;
+			printf("Time IntTemp: %d ms\n ", count == 0? (int) time_inttemp[count] : (int) running_avg);
+			count++;
+			printf("Count = %d", count);
+			
+		if(count == 20)
+		{
+			for(int i = 0; i < count; i++)
+			{
+				time_weather[i] = 0;
+				time_inttemp[i] = 0;
+			}
+			count = 0;
+		}
     while(Board_Input()==0){}; // wait for touch
+		ST7735_SetCursor(0,0);
     LED_GreenOff();
   }
 }
